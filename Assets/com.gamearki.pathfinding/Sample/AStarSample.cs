@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using UnityEngine;
 using GameArki.PathFinding.AStar;
 using GameArki.PathFinding.Generic;
+using UnityEngine;
 
 namespace GameArki.PathFinding.Sample
 {
@@ -9,13 +9,23 @@ namespace GameArki.PathFinding.Sample
     public class AStarSample : MonoBehaviour
     {
 
+        [Header("地图宽度")]
         public int width;
+
+        [Header("地图高度")]
         public int height;
 
+        [Header("起点")]
         public Transform start;
+
+        [Header("终点")]
         public Transform end;
 
+        [Header("允许斜线移动")]
         public bool allowDiagonalMove;
+
+        [Header("开启路径平滑处理")]
+        public bool needPathSmooth;
 
         byte[,] map;
         bool isRunning = false;
@@ -51,6 +61,14 @@ namespace GameArki.PathFinding.Sample
             GetXY(start.position, out int startX, out int startY);
             GetXY(end.position, out int endX, out int endY);
             path = AStarUtil.FindPath(map, startX, startY, endX, endY, allowDiagonalMove);
+            if (path != null)
+            {
+                if (needPathSmooth)
+                {
+                    var smoothPath = AStarUtil.GetSmoothPath(map, path);
+                    path = smoothPath;
+                }
+            }
         }
 
         void OnDrawGizmos()
@@ -60,20 +78,30 @@ namespace GameArki.PathFinding.Sample
             Gizmos.color = Color.black;
             DrawMapLine();
             DrawObstacles();
+            DrawPath();
+        }
 
+        void DrawPath()
+        {
             if (path != null)
             {
                 Gizmos.color = Color.green;
                 for (int i = 0; i < path.Count - 1; i++)
                 {
-                    var p1 = new Vector3(path[i].X, path[i].Y);
-                    var p2 = new Vector3(path[i + 1].X, path[i + 1].Y);
+                    var pos1 = path[i].pos;
+                    var pos2 = path[i + 1].pos;
+                    var p1 = new Vector3(pos1.X, pos1.Y);
+                    var p2 = new Vector3(pos2.X, pos2.Y);
                     p1 += new Vector3(0.5f, 0.5f, 0.5f);
                     p2 += new Vector3(0.5f, 0.5f, 0.5f);
                     Gizmos.DrawLine(p1, p2);
+                    Gizmos.DrawSphere(p1, 0.2f);
                 }
+                var pos = path[path.Count - 1].pos;
+                var p = new Vector3(pos.X, pos.Y);
+                p += new Vector3(0.5f, 0.5f, 0.5f);
+                Gizmos.DrawSphere(p, 0.2f);
             }
-
         }
 
         void DrawObstacles()
@@ -92,19 +120,15 @@ namespace GameArki.PathFinding.Sample
 
         void DrawMapLine()
         {
-            for (int i = 0; i < width; i++)
+            // Row
+            for (int i = 0; i <= height; i++)
             {
-                for (int j = 0; j < height - 1; j++)
-                {
-                    Gizmos.DrawLine(new Vector3(i, j, 0), new Vector3(i, j + 1, 0));
-                }
+                Gizmos.DrawLine(new Vector3(0, i, 0), new Vector3(width, i, 0));
             }
-            for (int i = 0; i < height; i++)
+            // Column
+            for (int i = 0; i <= width; i++)
             {
-                for (int j = 0; j < width - 1; j++)
-                {
-                    Gizmos.DrawLine(new Vector3(j, i, 0), new Vector3(j + 1, i, 0));
-                }
+                Gizmos.DrawLine(new Vector3(i, 0, 0), new Vector3(i, height, 0));
             }
         }
 
@@ -114,6 +138,12 @@ namespace GameArki.PathFinding.Sample
             var posY = pos.y;
             x = Mathf.FloorToInt(posX);
             y = Mathf.FloorToInt(posY);
+        }
+
+        void OnGUI()
+        {
+            int pathNodeCount = path != null ? path.Count : 0;
+            GUILayout.Label($"路径点个数:{pathNodeCount}");
         }
 
     }
