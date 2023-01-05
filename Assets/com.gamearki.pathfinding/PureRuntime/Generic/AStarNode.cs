@@ -1,7 +1,7 @@
 namespace GameArki.PathFinding.Generic
 {
 
-    public class AStarNode
+    internal class AStarNode
     {
 
         public int F;
