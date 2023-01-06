@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using GameArki.PathFinding.Generic;
 
 namespace GameArki.PathFinding.AStar
@@ -12,20 +11,20 @@ namespace GameArki.PathFinding.AStar
         static readonly int MOVE_DIAGONAL_COST = 141;
         static readonly int MOVE_STRAIGHT_COST = 100;
 
-        internal static List<Int2> FindPath(int[,] heightMap, int startX, int startY, int endX, int endY, int walkableHeightDiff, bool allowDiagonalMove)
+        internal static List<Int2> FindPath(int[,] heightMap, in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove)
         {
 
             // 初始化起点和终点
             AStarNode startNode = new AStarNode()
             {
-                pos = new Int2(startX, startY),
+                pos = startPos,
                 G = 0,
-                H = GetManhattanDistance(new Int2(startX, startY), new Int2(endX, endY)),
+                H = GetManhattanDistance(startPos, endPos),
                 F = 0
             };
             AStarNode endNode = new AStarNode()
             {
-                pos = new Int2(endX, endY),
+                pos = endPos,
             };
 
             // 创建开启列表和关闭列表
@@ -83,7 +82,7 @@ namespace GameArki.PathFinding.AStar
                 }
 
                 // 获取当前节点的周围节点
-                List<AStarNode> neighbours = GetWalkableNeighbours(heightMap, currentNode, closeList, walkableHeightDiff, allowDiagonalMove);
+                List<AStarNode> neighbours = GetWalkableNeighbours(heightMap, currentNode, closeList, walkableHeightDiffRange, allowDiagonalMove);
                 for (int i = 0; i < neighbours.Count; i++)
                 {
                     var neighbour = neighbours[i];
@@ -130,7 +129,7 @@ namespace GameArki.PathFinding.AStar
             return lowestFNode;
         }
 
-        static List<AStarNode> GetWalkableNeighbours(int[,] heightMap, AStarNode currentNode, byte[,] closeList, int walkableHeightDiff, bool allowDiagonalMove)
+        static List<AStarNode> GetWalkableNeighbours(int[,] heightMap, AStarNode currentNode, byte[,] closeList, in Int2 walkableHeightDiffRange, bool allowDiagonalMove)
         {
             List<AStarNode> neighbours = new List<AStarNode>();
             // 获取当前节点的位置
@@ -140,24 +139,24 @@ namespace GameArki.PathFinding.AStar
 
             // 获取四周的节点
             Int2 topPos = new Int2(x, y + 1);
-            if (IsWalkableNeighbour(heightMap, closeList, topPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = topPos });
+            if (IsWalkableNeighbour(heightMap, closeList, topPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = topPos });
             Int2 bottomPos = new Int2(x, y - 1);
-            if (IsWalkableNeighbour(heightMap, closeList, bottomPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = bottomPos });
+            if (IsWalkableNeighbour(heightMap, closeList, bottomPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottomPos });
             Int2 leftPos = new Int2(x - 1, y);
-            if (IsWalkableNeighbour(heightMap, closeList, leftPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = leftPos });
+            if (IsWalkableNeighbour(heightMap, closeList, leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = leftPos });
             Int2 rightPos = new Int2(x + 1, y);
-            if (IsWalkableNeighbour(heightMap, closeList, rightPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = rightPos });
+            if (IsWalkableNeighbour(heightMap, closeList, rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = rightPos });
 
             if (allowDiagonalMove)
             {
                 Int2 top_leftPos = new Int2(x - 1, y + 1);
-                if (IsWalkableNeighbour(heightMap, closeList, top_leftPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = top_leftPos });
+                if (IsWalkableNeighbour(heightMap, closeList, top_leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = top_leftPos });
                 Int2 bottom_leftPos = new Int2(x - 1, y - 1);
-                if (IsWalkableNeighbour(heightMap, closeList, bottom_leftPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = bottom_leftPos });
+                if (IsWalkableNeighbour(heightMap, closeList, bottom_leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottom_leftPos });
                 Int2 top_rightPos = new Int2(x + 1, y + 1);
-                if (IsWalkableNeighbour(heightMap, closeList, top_rightPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = top_rightPos });
+                if (IsWalkableNeighbour(heightMap, closeList, top_rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = top_rightPos });
                 Int2 bottom_rightPos = new Int2(x + 1, y - 1);
-                if (IsWalkableNeighbour(heightMap, closeList, bottom_rightPos, fromPos, walkableHeightDiff)) neighbours.Add(new AStarNode() { pos = bottom_rightPos });
+                if (IsWalkableNeighbour(heightMap, closeList, bottom_rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottom_rightPos });
             }
 
             return neighbours;
@@ -190,9 +189,9 @@ namespace GameArki.PathFinding.AStar
             return Math.Abs(pos1.X - pos2.X) + Math.Abs(pos1.Y - pos2.Y);
         }
 
-        static bool IsWalkableNeighbour(int[,] heightMap, byte[,] closeList, Int2 tarPos, Int2 fromPos, int walkableHeightDiff)
+        static bool IsWalkableNeighbour(int[,] heightMap, byte[,] closeList, in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
-            if (!IsCanReach(heightMap, tarPos, fromPos, walkableHeightDiff)) return false;
+            if (!IsCanReach(heightMap, tarPos, fromPos, walkableHeightDiffRange)) return false;
             if (closeList[tarPos.X, tarPos.Y] != 0) return false;
             return true;
         }
@@ -216,20 +215,20 @@ namespace GameArki.PathFinding.AStar
             return true;
         }
 
-        static bool IsWalkable(int[,] heightMap, Int2 tarPos, Int2 fromPos, int walkableHeightDiff)
+        static bool IsWalkable(int[,] heightMap, Int2 tarPos, Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
             var hDiff = heightMap[tarPos.X, tarPos.Y] - heightMap[fromPos.X, fromPos.Y];
-            return walkableHeightDiff >= hDiff;
+            return hDiff <= walkableHeightDiffRange.Y && hDiff >= walkableHeightDiffRange.X;
         }
 
-        static bool IsCanReach(int[,] heightMap, Int2 tarPos, Int2 fromPos, int walkableHeightDiff)
+        static bool IsCanReach(int[,] heightMap, Int2 tarPos, Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
-            return IsInBoundary(heightMap, tarPos) && IsWalkable(heightMap, tarPos, fromPos, walkableHeightDiff);
+            return IsInBoundary(heightMap, tarPos) && IsWalkable(heightMap, tarPos, fromPos, walkableHeightDiffRange);
         }
 
         #region [路径点优化]
 
-        public static List<Int2> GetSmoothPath(int[,] heightMap, List<Int2> path, int walkableHeightDiff)
+        public static List<Int2> GetSmoothPath(int[,] heightMap, List<Int2> path, in Int2 walkableHeightDiffRange)
         {
             List<Int2> smoothPath = new List<Int2>(path.Count);
             var pos1 = path[0];
@@ -248,7 +247,7 @@ namespace GameArki.PathFinding.AStar
                     smoothPath.RemoveAt(smoothPath.Count - 1);
                     smoothPath.Add(curPos2);
                 }
-                else if (CanGoStraight(heightMap, pos1, curPos2, walkableHeightDiff))
+                else if (CanGoStraight(heightMap, pos1, curPos2, walkableHeightDiffRange))
                 {
                     // 斜率不相同且可以直达,则可去除期间多余路径点
                     // 更新节点
@@ -268,7 +267,7 @@ namespace GameArki.PathFinding.AStar
             return smoothPath;
         }
 
-        static bool CanGoStraight(int[,] heightMap, Int2 startPos, Int2 endPos, int walkableHeightDiff)
+        static bool CanGoStraight(int[,] heightMap, in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange)
         {
             bool flag;
             bool flag1;
@@ -277,7 +276,7 @@ namespace GameArki.PathFinding.AStar
             int k_mom = startPos.X - endPos.X;
             bool isPositive = (k_son > 0 && k_mom > 0) || (k_son < 0 && k_mom < 0);
 
-            flag = IsP2PWalkable(heightMap, startPos, endPos, startPos, walkableHeightDiff);
+            flag = IsP2PWalkable(heightMap, startPos, endPos, startPos, walkableHeightDiffRange);
             if (isPositive)
             {
                 Int2 p1 = new Int2();
@@ -287,20 +286,20 @@ namespace GameArki.PathFinding.AStar
                 p2.X = endPos.X;
                 p2.Y = endPos.Y + 1;
 
-                flag1 = IsP2PWalkable(heightMap, p1, p2, startPos, walkableHeightDiff);
+                flag1 = IsP2PWalkable(heightMap, p1, p2, startPos, walkableHeightDiffRange);
                 Int2 p3 = new Int2(startPos.X + 1, startPos.Y);
                 Int2 p4 = new Int2(endPos.X + 1, endPos.Y);
-                flag2 = IsP2PWalkable(heightMap, p3, p4, startPos, walkableHeightDiff);
+                flag2 = IsP2PWalkable(heightMap, p3, p4, startPos, walkableHeightDiffRange);
                 return flag && flag1 && flag2;
             }
             else
             {
                 Int2 p1 = new Int2(startPos.X + 1, startPos.Y + 1);
                 Int2 p2 = new Int2(endPos.X + 1, endPos.Y + 1);
-                flag1 = IsP2PWalkable(heightMap, p1, p2, startPos, walkableHeightDiff);
+                flag1 = IsP2PWalkable(heightMap, p1, p2, startPos, walkableHeightDiffRange);
                 Int2 p3 = new Int2(startPos.X + 1, startPos.Y);
                 Int2 p4 = new Int2(endPos.X + 1, endPos.Y);
-                flag2 = IsP2PWalkable(heightMap, p3, p4, startPos, walkableHeightDiff);
+                flag2 = IsP2PWalkable(heightMap, p3, p4, startPos, walkableHeightDiffRange);
                 return flag && flag1 && flag2;
             }
 
@@ -317,7 +316,7 @@ namespace GameArki.PathFinding.AStar
             return k1_son * k2_mom == k2_son * k1_mom;
         }
 
-        static bool IsP2PWalkable(int[,] heightMap, Int2 p1, Int2 p2, Int2 startPos, int walkableHeightDiff)
+        static bool IsP2PWalkable(int[,] heightMap, Int2 p1, Int2 p2, Int2 startPos, in Int2 walkableHeightDiffRange)
         {
             if (p1.ValueEquals(p2)) return true;
 
@@ -350,7 +349,7 @@ namespace GameArki.PathFinding.AStar
                 {
                     var fromPos = currentPos;
                     currentPos += new Int2(0, 1);
-                    if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiff)) return false;
+                    if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiffRange)) return false;
                     currentPos += new Int2(0, 1);
                 }
             }
@@ -360,7 +359,7 @@ namespace GameArki.PathFinding.AStar
                 {
                     var fromPos = currentPos;
                     currentPos += new Int2(1, 0);
-                    if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiff)) return false;
+                    if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiffRange)) return false;
                     currentPos += new Int2(1, 0);
                 }
             }
@@ -383,7 +382,7 @@ namespace GameArki.PathFinding.AStar
                 Int2 offset = new Int2(0, isSlopeBiggerThanZero ? 0 : -1);
                 currentPos += offset;
                 p2 += offset;
-                if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiff))
+                if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiffRange))
                 {
                     return false;
                 }
@@ -447,7 +446,7 @@ namespace GameArki.PathFinding.AStar
                         return true;
                     }
 
-                    if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiff))
+                    if (!IsCanReach(heightMap, currentPos, fromPos, walkableHeightDiffRange))
                     {
                         return false;
                     }
