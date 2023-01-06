@@ -1,7 +1,9 @@
+using System;
+
 namespace GameArki.PathFinding.Generic
 {
 
-    internal class AStarNode
+    internal class AStarNode : IComparable<AStarNode>
     {
 
         public int F;
@@ -9,6 +11,22 @@ namespace GameArki.PathFinding.Generic
         public int H;
         public Int2 pos;
         public AStarNode Parent;
+
+        public int CompareTo(AStarNode x)
+        {
+            if (x.F > F)
+            {
+                return -1;
+            }
+            else if (x.F < F)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
 
     }
 

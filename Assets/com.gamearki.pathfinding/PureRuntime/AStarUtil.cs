@@ -30,9 +30,10 @@ namespace GameArki.PathFinding.AStar
             // 创建开启列表和关闭列表
             var lenX = heightMap.GetLength(0);
             var lenY = heightMap.GetLength(1);
-            List<AStarNode> openList = new List<AStarNode>();
-            byte[,] closeList = new byte[lenX, lenY];
-            byte[,] openListInfo = new byte[lenX, lenY];
+
+            PriorityQueue<AStarNode> openList = new PriorityQueue<AStarNode>(Comparer<AStarNode>.Default);
+            Dictionary<int, bool> closeListInfo = new Dictionary<int, bool>();
+            Dictionary<int, bool> openListInfo = new Dictionary<int, bool>();
 
             if (!IsInBoundary(heightMap, startNode))
             {
@@ -44,7 +45,7 @@ namespace GameArki.PathFinding.AStar
             }
 
             // 将起点添加到开启列表中
-            openList.Add(startNode);
+            openList.Enqueue(startNode);
             AStarNode currentNode = startNode;
 
             int count = 0;
@@ -59,9 +60,8 @@ namespace GameArki.PathFinding.AStar
                 var endNodePos = endNode.pos;
 
                 // 从开启列表中移除当前节点，并将其添加到关闭列表中
-                openList.Remove(currentNode);
-                openListInfo[curNodePos.X, curNodePos.Y] = 0;
-                closeList[curNodePos.X, curNodePos.Y] = 1;
+                openListInfo[curNodePos.X + curNodePos.Y * lenX] = false;
+                closeListInfo.Add(curNodePos.X + curNodePos.Y * lenX, true);
 
                 // 如果当前节点为终点，则找到了最短路径
                 if (curNodePos.ValueEquals(endNodePos))
@@ -82,7 +82,7 @@ namespace GameArki.PathFinding.AStar
                 }
 
                 // 获取当前节点的周围节点
-                List<AStarNode> neighbours = GetWalkableNeighbours(heightMap, currentNode, closeList, walkableHeightDiffRange, allowDiagonalMove);
+                List<AStarNode> neighbours = GetWalkableNeighbours(heightMap, currentNode, closeListInfo, walkableHeightDiffRange, allowDiagonalMove);
                 for (int i = 0; i < neighbours.Count; i++)
                 {
                     var neighbour = neighbours[i];
@@ -92,7 +92,8 @@ namespace GameArki.PathFinding.AStar
                     int newG = currentNode.G + g_offset;
 
                     // 如果新的G值比原来的G值小,计算新的F值 
-                    if (openListInfo[neighbourPos.X, neighbourPos.Y] == 0 || newG < neighbour.G)
+                    bool neighbourExits = openListInfo.TryGetValue(neighbourPos.X + neighbourPos.Y * lenX, out var flag) && flag;
+                    if (!neighbourExits || newG < neighbour.G)
                     {
                         neighbour.G = newG;
                         neighbour.H = GetDistance(neighbour, endNode, allowDiagonalMove);
@@ -101,10 +102,10 @@ namespace GameArki.PathFinding.AStar
                     }
 
                     // 如果节点不在开启列表中，则将其添加到开启列表中 
-                    if (openListInfo[neighbourPos.X, neighbourPos.Y] == 0)
+                    if (!neighbourExits)
                     {
-                        openList.Add(neighbour);
-                        openListInfo[neighbourPos.X, neighbourPos.Y] = 1;
+                        openList.Enqueue(neighbour);
+                        openListInfo.Add(neighbourPos.X + neighbourPos.Y * lenX, true);
                     }
                 }
 
@@ -114,22 +115,12 @@ namespace GameArki.PathFinding.AStar
             return null;
         }
 
-        static AStarNode GetLowestFNode(List<AStarNode> openList, AStarNode endNode)
+        static AStarNode GetLowestFNode(PriorityQueue<AStarNode> openList, AStarNode endNode)
         {
-            AStarNode lowestFNode = openList[0];
-            for (int i = 1; i < openList.Count; i++)
-            {
-                var node = openList[i];
-                if (node.F < lowestFNode.F)
-                {
-                    lowestFNode = node;
-                }
-            }
-
-            return lowestFNode;
+            return openList.Dequeue();
         }
 
-        static List<AStarNode> GetWalkableNeighbours(int[,] heightMap, AStarNode currentNode, byte[,] closeList, in Int2 walkableHeightDiffRange, bool allowDiagonalMove)
+        static List<AStarNode> GetWalkableNeighbours(int[,] heightMap, AStarNode currentNode, Dictionary<int, bool> closeInfo, in Int2 walkableHeightDiffRange, bool allowDiagonalMove)
         {
             List<AStarNode> neighbours = new List<AStarNode>();
             // 获取当前节点的位置
@@ -139,24 +130,24 @@ namespace GameArki.PathFinding.AStar
 
             // 获取四周的节点
             Int2 topPos = new Int2(x, y + 1);
-            if (IsWalkableNeighbour(heightMap, closeList, topPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = topPos });
+            if (IsWalkableNeighbour(heightMap, closeInfo, topPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = topPos });
             Int2 bottomPos = new Int2(x, y - 1);
-            if (IsWalkableNeighbour(heightMap, closeList, bottomPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottomPos });
+            if (IsWalkableNeighbour(heightMap, closeInfo, bottomPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottomPos });
             Int2 leftPos = new Int2(x - 1, y);
-            if (IsWalkableNeighbour(heightMap, closeList, leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = leftPos });
+            if (IsWalkableNeighbour(heightMap, closeInfo, leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = leftPos });
             Int2 rightPos = new Int2(x + 1, y);
-            if (IsWalkableNeighbour(heightMap, closeList, rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = rightPos });
+            if (IsWalkableNeighbour(heightMap, closeInfo, rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = rightPos });
 
             if (allowDiagonalMove)
             {
                 Int2 top_leftPos = new Int2(x - 1, y + 1);
-                if (IsWalkableNeighbour(heightMap, closeList, top_leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = top_leftPos });
+                if (IsWalkableNeighbour(heightMap, closeInfo, top_leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = top_leftPos });
                 Int2 bottom_leftPos = new Int2(x - 1, y - 1);
-                if (IsWalkableNeighbour(heightMap, closeList, bottom_leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottom_leftPos });
+                if (IsWalkableNeighbour(heightMap, closeInfo, bottom_leftPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottom_leftPos });
                 Int2 top_rightPos = new Int2(x + 1, y + 1);
-                if (IsWalkableNeighbour(heightMap, closeList, top_rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = top_rightPos });
+                if (IsWalkableNeighbour(heightMap, closeInfo, top_rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = top_rightPos });
                 Int2 bottom_rightPos = new Int2(x + 1, y - 1);
-                if (IsWalkableNeighbour(heightMap, closeList, bottom_rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottom_rightPos });
+                if (IsWalkableNeighbour(heightMap, closeInfo, bottom_rightPos, fromPos, walkableHeightDiffRange)) neighbours.Add(new AStarNode() { pos = bottom_rightPos });
             }
 
             return neighbours;
@@ -189,10 +180,10 @@ namespace GameArki.PathFinding.AStar
             return Math.Abs(pos1.X - pos2.X) + Math.Abs(pos1.Y - pos2.Y);
         }
 
-        static bool IsWalkableNeighbour(int[,] heightMap, byte[,] closeList, in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange)
+        static bool IsWalkableNeighbour(int[,] heightMap, Dictionary<int, bool> closeList, in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
             if (!IsCanReach(heightMap, tarPos, fromPos, walkableHeightDiffRange)) return false;
-            if (closeList[tarPos.X, tarPos.Y] != 0) return false;
+            if (closeList.TryGetValue(tarPos.X + tarPos.Y * heightMap.GetLength(0), out var flag) && flag) return false;
             return true;
         }
 
