@@ -640,7 +640,8 @@ MonoBehaviour:
   length: 20
   start: {fileID: 1084480982}
   end: {fileID: 131716243}
-  walkableHeightDiff: 1
+  walkableHeightDiffRangeX: -1
+  walkableHeightDiffRangeY: 2
   maxHeight: 5
   allowDiagonalMove: 0
   needPathSmooth: 0
