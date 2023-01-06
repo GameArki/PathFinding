@@ -31,7 +31,7 @@ namespace GameArki.PathFinding.AStar
             var lenX = heightMap.GetLength(0);
             var lenY = heightMap.GetLength(1);
 
-            PriorityQueue<AStarNode> openList = new PriorityQueue<AStarNode>(Comparer<AStarNode>.Default);
+            Heap<AStarNode> openList = new Heap<AStarNode>(Comparer<AStarNode>.Default, lenX * lenY);
             Dictionary<int, bool> closeListInfo = new Dictionary<int, bool>();
             Dictionary<int, bool> openListInfo = new Dictionary<int, bool>();
 
@@ -45,14 +45,14 @@ namespace GameArki.PathFinding.AStar
             }
 
             // 将起点添加到开启列表中
-            openList.Enqueue(startNode);
+            openList.Push(startNode);
             AStarNode currentNode = startNode;
 
             int count = 0;
             while (openList.Count > 0)
             {
                 count++;
-                if (count > 1000) return null;
+                if (count > 100) return null;
 
                 // 找到开启列表中F值
                 currentNode = GetLowestFNode(openList, endNode);
@@ -104,7 +104,7 @@ namespace GameArki.PathFinding.AStar
                     // 如果节点不在开启列表中，则将其添加到开启列表中 
                     if (!neighbourExits)
                     {
-                        openList.Enqueue(neighbour);
+                        openList.Push(neighbour);
                         openListInfo.Add(neighbourPos.X + neighbourPos.Y * lenX, true);
                     }
                 }
@@ -115,9 +115,9 @@ namespace GameArki.PathFinding.AStar
             return null;
         }
 
-        static AStarNode GetLowestFNode(PriorityQueue<AStarNode> openList, AStarNode endNode)
+        static AStarNode GetLowestFNode(Heap<AStarNode> openList, AStarNode endNode)
         {
-            return openList.Dequeue();
+            return openList.Pop();
         }
 
         static List<AStarNode> GetWalkableNeighbours(int[,] heightMap, AStarNode currentNode, Dictionary<int, bool> closeInfo, in Int2 walkableHeightDiffRange, bool allowDiagonalMove)
@@ -206,13 +206,13 @@ namespace GameArki.PathFinding.AStar
             return true;
         }
 
-        static bool IsWalkable(int[,] heightMap, Int2 tarPos, Int2 fromPos, in Int2 walkableHeightDiffRange)
+        static bool IsWalkable(int[,] heightMap, in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
             var hDiff = heightMap[tarPos.X, tarPos.Y] - heightMap[fromPos.X, fromPos.Y];
             return hDiff <= walkableHeightDiffRange.Y && hDiff >= walkableHeightDiffRange.X;
         }
 
-        static bool IsCanReach(int[,] heightMap, Int2 tarPos, Int2 fromPos, in Int2 walkableHeightDiffRange)
+        static bool IsCanReach(int[,] heightMap, in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
             return IsInBoundary(heightMap, tarPos) && IsWalkable(heightMap, tarPos, fromPos, walkableHeightDiffRange);
         }
