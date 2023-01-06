@@ -22,9 +22,11 @@ namespace GameArki.PathFinding.Sample
         [Header("终点")]
         public Transform end;
 
-        int walkableHeightDiffRangeX = -1;
-        int walkableHeightDiffRangeY = 2;
-        int maxHeight = 5;
+        [Header("可行走最大高度差")]
+        public Int2 walkableHeightDiffRange;
+
+        [Header("最大高度")]
+        public int maxHeight;
 
         [Header("允许斜线移动")]
         public bool allowDiagonalMove;
@@ -34,10 +36,9 @@ namespace GameArki.PathFinding.Sample
 
         bool isRunning = false;
 
-        AstarEntity astarEntity;
-        Int2 walkableHeightDiffRange;
-
         List<Int2> path;
+
+        AstarEntity astarEntity;
 
         void Awake()
         {
@@ -72,8 +73,6 @@ namespace GameArki.PathFinding.Sample
         {
             var startPos = GetXY(start.position);
             var endPos = GetXY(end.position);
-            walkableHeightDiffRange.X = walkableHeightDiffRangeX;
-            walkableHeightDiffRange.Y = walkableHeightDiffRangeY;
             if (needPathSmooth) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
             else path = astarEntity.FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
         }
@@ -145,28 +144,8 @@ namespace GameArki.PathFinding.Sample
 
         void OnGUI()
         {
-            GUILayout.Space(50);
-
-            GUILayout.BeginHorizontal();
             int pathNodeCount = path != null ? path.Count : 0;
             GUILayout.Label($"路径点个数:{pathNodeCount}");
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"下坡限制高度差:{walkableHeightDiffRangeX}");
-            walkableHeightDiffRangeX = (int)GUILayout.HorizontalSlider(walkableHeightDiffRangeX, -10, 0, GUILayout.Width(100));
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"上坡限制高度差:{walkableHeightDiffRangeY}");
-            walkableHeightDiffRangeY = (int)GUILayout.HorizontalSlider(walkableHeightDiffRangeY, 0, 10, GUILayout.Width(100));
-            GUILayout.EndHorizontal();
-
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"最大高度:{maxHeight}");
-            maxHeight = (int)GUILayout.HorizontalSlider(maxHeight, 0, 10, GUILayout.Width(100));
-            GUILayout.EndHorizontal();
-
             for (int i = 0; i < width; i++)
             {
                 for (int j = 0; j < length; j++)

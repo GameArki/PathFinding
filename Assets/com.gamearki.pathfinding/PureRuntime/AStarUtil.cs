@@ -206,13 +206,13 @@ namespace GameArki.PathFinding.AStar
             return true;
         }
 
-        static bool IsWalkable(int[,] heightMap, in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange)
+        static bool IsWalkable(int[,] heightMap, Int2 tarPos, Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
             var hDiff = heightMap[tarPos.X, tarPos.Y] - heightMap[fromPos.X, fromPos.Y];
             return hDiff <= walkableHeightDiffRange.Y && hDiff >= walkableHeightDiffRange.X;
         }
 
-        static bool IsCanReach(int[,] heightMap, in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange)
+        static bool IsCanReach(int[,] heightMap, Int2 tarPos, Int2 fromPos, in Int2 walkableHeightDiffRange)
         {
             return IsInBoundary(heightMap, tarPos) && IsWalkable(heightMap, tarPos, fromPos, walkableHeightDiffRange);
         }
