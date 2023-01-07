@@ -3,7 +3,7 @@ using System;
 namespace GameArki.PathFinding.Generic
 {
 
-    internal class AStarNode : IComparable<AStarNode>
+    public class AStarNode : IComparable<AStarNode>
     {
 
         public int F;

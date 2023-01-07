@@ -48,12 +48,8 @@ namespace GameArki.PathFinding.AStar
             openList.Push(startNode);
             AStarNode currentNode = startNode;
 
-            int count = 0;
             while (openList.Count > 0)
             {
-                count++;
-                if (count > 100) return null;
-
                 // 找到开启列表中F值
                 currentNode = GetLowestFNode(openList, endNode);
                 var curNodePos = currentNode.pos;
@@ -192,7 +188,7 @@ namespace GameArki.PathFinding.AStar
             return IsInBoundary(heightMap, node.pos);
         }
 
-        static bool IsInBoundary(int[,] heightMap, Int2 pos)
+        static bool IsInBoundary(int[,] heightMap, in Int2 pos)
         {
             var x = pos.X;
             var y = pos.Y;

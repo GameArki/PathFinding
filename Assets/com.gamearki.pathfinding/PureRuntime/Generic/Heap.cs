@@ -1,118 +1,130 @@
 using System;
 using System.Collections.Generic;
 
-public class Heap<T>
+namespace GameArki.PathFinding.Generic
 {
 
-
-    int _count;
-    public int Count => _count;
-
-    T[] _items;
-    Comparer<T> _comparer;
-    int _capacity;
-
-    public Heap(Comparer<T> comparer, int capacity)
+    public class Heap<T>
     {
-        this._comparer = comparer;
-        this._capacity = capacity;
-        this._count = 0;
-        this._items = new T[capacity];
-    }
 
-    public void Push(T value)
-    {
-        if (_count == _capacity)
+
+        int _count;
+        public int Count => _count;
+
+        public T[] _items;
+        Comparer<T> _comparer;
+        int _capacity;
+
+        public Heap(Comparer<T> comparer, int capacity)
         {
-            throw new Exception("Heap is full");
+            this._comparer = comparer;
+            this._capacity = capacity;
+            this._count = 0;
+            this._items = new T[capacity];
         }
 
-        _items[_count] = value;
-        _count++;
-        HeapifyUp();
-    }
-
-    void HeapifyUp()
-    {
-        int index = _count - 1;
-        var parentIndex = GetParentIndex(index);
-        while (index > 0 && NeedSwap(parentIndex, index))
+        public void Push(T value)
         {
-            Swap(parentIndex, index);
-            index = parentIndex;
-        }
-    }
-
-    public T Pop()
-    {
-        if (_count == 0)
-        {
-            throw new Exception("Heap is empty");
-        }
-
-        var min = _items[0];
-        _items[0] = _items[_count - 1];
-        _count--;
-        HeapifyDown();
-        return min;
-    }
-
-    void HeapifyDown()
-    {
-        int index = 0;
-        while (HasLeftChild(index))
-        {
-            int smallerChildIndex = GetLeftChild(index);
-            if (HasRightChild(index) && GetRightChild(index) < GetLeftChild(index))
+            if (_count == _capacity)
             {
-                smallerChildIndex = GetRightChild(index);
+                throw new Exception("Heap is full");
             }
 
-            if (NeedSwap(index, smallerChildIndex))
+            _items[_count] = value;
+            _count++;
+
+            HeapifyUp();
+        }
+
+        void HeapifyUp()
+        {
+            int index = _count - 1;
+            var parentIndex = GetParentIndex(index);
+            while (index > 0 && NeedSwap(parentIndex, index))
             {
+                Swap(parentIndex, index);
+                index = parentIndex;
+                parentIndex = GetParentIndex(index);
+            }
+        }
+
+        public T Pop()
+        {
+            if (_count == 0)
+            {
+                throw new Exception("Heap is empty");
+            }
+
+            var min = _items[0];
+            _items[0] = _items[_count - 1];
+            _count--;
+            HeapifyDown();
+            return min;
+        }
+
+        void HeapifyDown()
+        {
+            int index = 0;
+            while (HasLeftChild(index))
+            {
+
+                int smallerChildIndex = GetComparedChild(index);
+
+                if (!NeedSwap(index, smallerChildIndex))
+                {
+                    break;
+                }
+
                 Swap(index, smallerChildIndex);
                 index = smallerChildIndex;
             }
-
         }
-    }
 
-    int GetParentIndex(int index)
-    {
-        return (index - 1) / 2;
-    }
+        int GetParentIndex(int index)
+        {
+            return (index - 1) / 2;
+        }
 
-    void Swap(int index1, int index2)
-    {
-        var temp = _items[index1];
-        _items[index1] = _items[index2];
-        _items[index2] = temp;
-    }
+        void Swap(int index1, int index2)
+        {
+            var temp = _items[index1];
+            _items[index1] = _items[index2];
+            _items[index2] = temp;
+        }
 
+        int GetLeftChild(int index)
+        {
+            return index * 2 + 1;
+        }
 
-    int GetLeftChild(int index)
-    {
-        return index * 2 + 1;
-    }
+        int GetRightChild(int index)
+        {
+            return index * 2 + 2;
+        }
 
-    int GetRightChild(int index)
-    {
-        return index * 2 + 2;
-    }
+        int GetComparedChild(int index)
+        {
+            int leftChildIndex = GetLeftChild(index);
+            int rightChildIndex = GetRightChild(index);
+            if (NeedSwap(rightChildIndex, leftChildIndex)) return leftChildIndex;
+            return rightChildIndex;
+        }
 
-    bool HasLeftChild(int index)
-    {
-        return GetLeftChild(index) < _count;
-    }
+        bool HasLeftChild(int index)
+        {
+            return GetLeftChild(index) < _count;
+        }
 
-    bool HasRightChild(int index)
-    {
-        return GetRightChild(index) < _count;
-    }
+        bool HasRightChild(int index)
+        {
+            return GetRightChild(index) < _count;
+        }
 
-    bool NeedSwap(int parentIndex, int childIndex)
-    {
-        return _comparer.Compare(_items[parentIndex], _items[childIndex]) == -1;
+        bool NeedSwap(int parentIndex, int childIndex)
+        {
+            return _comparer.Compare(_items[parentIndex], _items[childIndex]) >= 0;
+        }
+
     }
 
 }
