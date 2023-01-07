@@ -4,11 +4,9 @@ using GameArki.PathFinding.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace GameArki.PathFinding.Sample
-{
+namespace GameArki.PathFinding.Sample {
 
-    public class AStarSample : MonoBehaviour
-    {
+    public class AStarSample : MonoBehaviour {
 
         [Header("地图宽度")]
         public int width;
@@ -41,8 +39,7 @@ namespace GameArki.PathFinding.Sample
         int walkableHeightDiffRangeY = 0;
         int maxHeight = 5;
 
-        void Awake()
-        {
+        void Awake() {
             // Heap<int> heap = new Heap<int>(Comparer<int>.Default, 10);
             // heap.Push(5);
             // heap.Push(3);
@@ -65,21 +62,17 @@ namespace GameArki.PathFinding.Sample
             astarEntity = new AstarEntity(width, length);
         }
 
-        void Update()
-        {
+        void Update() {
             if (!isRunning) return;
             int v = 0;
             if (Input.GetKeyDown(KeyCode.Mouse0)) v = 1;
             if (Input.GetKeyDown(KeyCode.Mouse1)) v = -1;
-            if (v != 0)
-            {
+            if (v != 0) {
                 var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-                if (Physics.Raycast(ray, out var hit))
-                {
+                if (Physics.Raycast(ray, out var hit)) {
 
                     var pos = GetXY(hit.point);
-                    if (!(pos.X < 0 || pos.X >= width || pos.Y < 0 || pos.Y >= length))
-                    {
+                    if (!(pos.X < 0 || pos.X >= width || pos.Y < 0 || pos.Y >= length)) {
                         var oldHeight = astarEntity.GetXYHeight(pos);
                         var newHeight = oldHeight + v;
                         newHeight = newHeight > maxHeight ? maxHeight : newHeight;
@@ -89,22 +82,19 @@ namespace GameArki.PathFinding.Sample
             }
         }
 
-        void FixedUpdate()
-        {
+        void FixedUpdate() {
             if (!isRunning) return;
             var startPos = GetXY(start.position);
             var endPos = GetXY(end.position);
             walkableHeightDiffRange.X = walkableHeightDiffRangeX;
             walkableHeightDiffRange.Y = walkableHeightDiffRangeY;
-            for (int i = 0; i < findTimes_eachFrame; i++)
-            {
+            for (int i = 0; i < findTimes_eachFrame; i++) {
                 if (needPathSmooth) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
                 else path = astarEntity.FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
             }
         }
 
-        void OnDrawGizmos()
-        {
+        void OnDrawGizmos() {
             if (!isRunning) return;
 
             Gizmos.color = Color.black;
@@ -113,13 +103,10 @@ namespace GameArki.PathFinding.Sample
             DrawPath();
         }
 
-        void DrawPath()
-        {
-            if (path != null)
-            {
+        void DrawPath() {
+            if (path != null) {
                 Gizmos.color = Color.green;
-                for (int i = 0; i < path.Count - 1; i++)
-                {
+                for (int i = 0; i < path.Count - 1; i++) {
                     var pos1 = path[i];
                     var pos2 = path[i + 1];
                     var p1 = new Vector3(pos1.X, pos1.Y);
@@ -136,40 +123,32 @@ namespace GameArki.PathFinding.Sample
             }
         }
 
-        void DrawHeightMap()
-        {
+        void DrawHeightMap() {
             Color color = Gizmos.color;
-            for (int i = 0; i < width; i++)
-            {
-                for (int j = 0; j < length; j++)
-                {
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < length; j++) {
                     var height = astarEntity.GetXYHeight(new Int2(i, j));
                     color.a = (float)height / maxHeight;
                     Gizmos.color = color;
-                    if (height != 0)
-                    {
+                    if (height != 0) {
                         Gizmos.DrawCube(new Vector3(i + 0.5f, j + 0.5f), new Vector3(0.8f, 0.8f, 1f));
                     }
                 }
             }
         }
 
-        void DrawMapLine()
-        {
+        void DrawMapLine() {
             // Row
-            for (int i = 0; i <= length; i++)
-            {
+            for (int i = 0; i <= length; i++) {
                 Gizmos.DrawLine(new Vector3(0, i, 0), new Vector3(width, i, 0));
             }
             // Column
-            for (int i = 0; i <= width; i++)
-            {
+            for (int i = 0; i <= width; i++) {
                 Gizmos.DrawLine(new Vector3(i, 0, 0), new Vector3(i, length, 0));
             }
         }
 
-        void OnGUI()
-        {
+        void OnGUI() {
             GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
@@ -199,10 +178,8 @@ namespace GameArki.PathFinding.Sample
 
 
 
-            for (int i = 0; i < width; i++)
-            {
-                for (int j = 0; j < length; j++)
-                {
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < length; j++) {
                     var pos = new Vector3(i + 0.5f, j + 0.5f);
                     var height = astarEntity.GetXYHeight(new Int2(i, j));
                     Handles.Label(pos, height.ToString());
@@ -210,8 +187,7 @@ namespace GameArki.PathFinding.Sample
             }
         }
 
-        Int2 GetXY(Vector3 pos)
-        {
+        Int2 GetXY(Vector3 pos) {
             return new Int2(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y));
         }
 
