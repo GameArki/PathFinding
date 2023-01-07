@@ -22,10 +22,6 @@ namespace GameArki.PathFinding.Sample
         [Header("终点")]
         public Transform end;
 
-        int walkableHeightDiffRangeX = -1;
-        int walkableHeightDiffRangeY = 0;
-        int maxHeight = 5;
-
         [Header("允许斜线移动")]
         public bool allowDiagonalMove;
 
@@ -38,6 +34,12 @@ namespace GameArki.PathFinding.Sample
         Int2 walkableHeightDiffRange;
 
         List<Int2> path;
+
+        // For GUI
+        int findTimes_eachFrame = 1;
+        int walkableHeightDiffRangeX = -1;
+        int walkableHeightDiffRangeY = 0;
+        int maxHeight = 5;
 
         void Awake()
         {
@@ -94,8 +96,11 @@ namespace GameArki.PathFinding.Sample
             var endPos = GetXY(end.position);
             walkableHeightDiffRange.X = walkableHeightDiffRangeX;
             walkableHeightDiffRange.Y = walkableHeightDiffRangeY;
-            if (needPathSmooth) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
-            else path = astarEntity.FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
+            for (int i = 0; i < findTimes_eachFrame; i++)
+            {
+                if (needPathSmooth) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
+                else path = astarEntity.FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
+            }
         }
 
         void OnDrawGizmos()
@@ -165,7 +170,7 @@ namespace GameArki.PathFinding.Sample
 
         void OnGUI()
         {
-            GUILayout.Space(50);
+            GUILayout.Space(10);
 
             GUILayout.BeginHorizontal();
             int pathNodeCount = path != null ? path.Count : 0;
@@ -186,6 +191,13 @@ namespace GameArki.PathFinding.Sample
             GUILayout.Label($"最大高度:{maxHeight}");
             maxHeight = (int)GUILayout.HorizontalSlider(maxHeight, 0, 10, GUILayout.Width(100));
             GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"性能测试(每帧寻路次数):{findTimes_eachFrame}");
+            findTimes_eachFrame = (int)GUILayout.HorizontalSlider(findTimes_eachFrame, 1, 500, GUILayout.Width(200));
+            GUILayout.EndHorizontal();
+
+
 
             for (int i = 0; i < width; i++)
             {
