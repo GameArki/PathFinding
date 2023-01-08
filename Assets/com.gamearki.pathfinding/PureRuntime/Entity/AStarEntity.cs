@@ -23,27 +23,47 @@ namespace GameArki.PathFinding.AStar {
         static readonly int MOVE_DIAGONAL_COST = 141;
         static readonly int MOVE_STRAIGHT_COST = 100;
 
+        List<Int2> path;
+        List<Int2> smoothPath;
+
         public AstarEntity(int width, int length) {
             this.width = width;
             this.length = length;
             this.capacity = width * length;
+
+            // 数据缓存
             heightMap = new int[width, length];
 
-            // 创建开启列表和关闭列表
             openList = new Heap<AStarNode>(capacity);
             closedInfo = new Dictionary<int, bool>();
             opennedInfo = new Dictionary<int, bool>();
+            
             nodePool = new ObjectPool<AStarNode>(capacity);
+
+            path = new List<Int2>(capacity);
+            smoothPath = new List<Int2>(capacity);
+        }
+
+        public List<Int2> FindSmoothPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove) {
+            FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out var count);
+            return smoothPath;
         }
 
         public List<Int2> FindSmoothPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, out int count) {
-            var path = FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
-            if (path != null) path = GetSmoothPath(path, walkableHeightDiffRange);
+            FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
+            if (path.Count != 0) {
+                FindSmoothPath(path, walkableHeightDiffRange);
+            }
+            return smoothPath;
+        }
+
+        public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove) {
+            FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out var count);
             return path;
         }
 
-        public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, out int count) {
-            count = 0;
+        public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, out int calculateCount) {
+            calculateCount = 0;
             closedInfo.Clear();
             opennedInfo.Clear();
             openList.Clear();
@@ -78,7 +98,7 @@ namespace GameArki.PathFinding.AStar {
             AStarNode currentNode = startNode;
 
             while (openList.Count > 0) {
-                count++;
+                calculateCount++;
                 // 找到开启列表中F值
                 currentNode = GetLowestFNode(openList, endNode);
                 var curNodePos = currentNode.pos;
@@ -96,7 +116,7 @@ namespace GameArki.PathFinding.AStar {
                         pathStack.Push(currentNode);
                         currentNode = currentNode.parent;
                     }
-                    List<Int2> path = new List<Int2>(pathStack.Count);
+                    path.Clear();
                     while (pathStack.TryPop(out var node)) {
                         path.Add(node.pos);
                     }
@@ -110,11 +130,7 @@ namespace GameArki.PathFinding.AStar {
             }
 
             // 如果开启列表为空，则无法找到路径
-            for (int i = 0; i < recycleNodeCount; i++) {
-                var node = recycleNodes[i];
-                node.Clear();
-                nodePool.Enqueue(node);
-            }
+            RecycleToNodePool(recycleNodes, recycleNodeCount);
             return null;
 
         }
@@ -164,15 +180,36 @@ namespace GameArki.PathFinding.AStar {
                 neighbours[nodeCount++] = node;
                 recycleNodes[recycleNodeCount++] = node;
             }
+
             if (allowDiagonalMove) {
                 Int2 top_leftPos = new Int2(x - 1, y + 1);
-                if (IsWalkableNeighbour(top_leftPos, fromPos, walkableHeightDiffRange)) neighbours[nodeCount++] = new AStarNode() { pos = top_leftPos };
+                if (IsWalkableNeighbour(top_leftPos, fromPos, walkableHeightDiffRange)) {
+                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
+                    node.pos = top_leftPos;
+                    neighbours[nodeCount++] = node;
+                    recycleNodes[recycleNodeCount++] = node;
+                }
                 Int2 bottom_leftPos = new Int2(x - 1, y - 1);
-                if (IsWalkableNeighbour(bottom_leftPos, fromPos, walkableHeightDiffRange)) neighbours[nodeCount++] = new AStarNode() { pos = bottom_leftPos };
+                if (IsWalkableNeighbour(bottom_leftPos, fromPos, walkableHeightDiffRange)) {
+                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
+                    node.pos = bottom_leftPos;
+                    neighbours[nodeCount++] = node;
+                    recycleNodes[recycleNodeCount++] = node;
+                }
                 Int2 top_rightPos = new Int2(x + 1, y + 1);
-                if (IsWalkableNeighbour(top_rightPos, fromPos, walkableHeightDiffRange)) neighbours[nodeCount++] = new AStarNode() { pos = top_rightPos };
+                if (IsWalkableNeighbour(top_rightPos, fromPos, walkableHeightDiffRange)) {
+                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
+                    node.pos = top_rightPos;
+                    neighbours[nodeCount++] = node;
+                    recycleNodes[recycleNodeCount++] = node;
+                }
                 Int2 bottom_rightPos = new Int2(x + 1, y - 1);
-                if (IsWalkableNeighbour(bottom_rightPos, fromPos, walkableHeightDiffRange)) neighbours[nodeCount++] = new AStarNode() { pos = bottom_rightPos };
+                if (IsWalkableNeighbour(bottom_rightPos, fromPos, walkableHeightDiffRange)) {
+                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
+                    node.pos = bottom_rightPos;
+                    neighbours[nodeCount++] = node;
+                    recycleNodes[recycleNodeCount++] = node;
+                }
             }
 
             for (int i = 0; i < nodeCount; i++) {
@@ -258,8 +295,8 @@ namespace GameArki.PathFinding.AStar {
 
         #region [路径点优化]
 
-        public List<Int2> GetSmoothPath(List<Int2> path, in Int2 walkableHeightDiffRange) {
-            List<Int2> smoothPath = new List<Int2>(path.Count);
+        public List<Int2> FindSmoothPath(List<Int2> path, in Int2 walkableHeightDiffRange) {
+            smoothPath.Clear();
             var pos1 = path[0];
             var pos2 = path[1];
             smoothPath.Add(pos1);
