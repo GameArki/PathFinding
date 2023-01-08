@@ -5,22 +5,62 @@ namespace GameArki.PathFinding.Generic {
 
     public class Heap<T> {
 
+        T[] items;
+
         int count;
         public int Count => count;
 
-        public T[] _items;
-        Comparer<T> _comparer;
         int capacity;
+        public int Capacity => capacity;
+
+        Comparer<T> comparer;
 
         public Heap(int capacity) : this(Comparer<T>.Default, capacity) {
-
         }
 
         public Heap(Comparer<T> comparer, int capacity) {
-            this._comparer = comparer;
+            this.comparer = comparer;
             this.capacity = capacity;
             this.count = 0;
-            this._items = new T[capacity];
+            this.items = new T[capacity];
+        }
+
+        public void Foreach(Action<T> action) {
+            for (int i = 0; i < count; i++) {
+                action(items[i]);
+            }
+        }
+
+        public void Foreach_BFS(Action<T> action) {
+            if (count == 0) return;
+
+            Queue<int> queue = new Queue<int>();
+            queue.Enqueue(0);
+
+            while (queue.Count > 0) {
+                var index = queue.Dequeue();
+                action(items[index]);
+
+                int leftChildIndex = GetLeftChildIndex(index);
+                if (leftChildIndex < count) queue.Enqueue(leftChildIndex);
+
+                int rightChildIndex = GetRightChildIndex(index);
+                if (rightChildIndex < count) queue.Enqueue(rightChildIndex);
+            }
+        }
+
+        public void Foreach_DFS(Action<T> action) {
+            Foreach_DFS(action, 0);
+        }
+
+        void Foreach_DFS(Action<T> action, int index) {
+            if (index >= count) {
+                return;
+            }
+
+            action(items[index]);
+            Foreach_DFS(action, GetLeftChildIndex(index));
+            Foreach_DFS(action, GetRightChildIndex(index));
         }
 
         public void Push(T value) {
@@ -28,7 +68,7 @@ namespace GameArki.PathFinding.Generic {
                 throw new Exception("Heap is full");
             }
 
-            _items[count] = value;
+            items[count] = value;
             count++;
 
             HeapifyUp();
@@ -49,8 +89,8 @@ namespace GameArki.PathFinding.Generic {
                 throw new Exception("Heap is empty");
             }
 
-            var min = _items[0];
-            _items[0] = _items[count - 1];
+            var min = items[0];
+            items[0] = items[count - 1];
             count--;
             HeapifyDown();
             return min;
@@ -60,7 +100,7 @@ namespace GameArki.PathFinding.Generic {
             int index = 0;
             while (HasLeftChild(index)) {
 
-                int smallerChildIndex = GetComparedChild(index);
+                int smallerChildIndex = GetComparedChildIndex(index);
 
                 if (!NeedSwap(index, smallerChildIndex)) {
                     break;
@@ -76,36 +116,36 @@ namespace GameArki.PathFinding.Generic {
         }
 
         void Swap(int index1, int index2) {
-            var temp = _items[index1];
-            _items[index1] = _items[index2];
-            _items[index2] = temp;
+            var temp = items[index1];
+            items[index1] = items[index2];
+            items[index2] = temp;
         }
 
-        int GetLeftChild(int index) {
+        int GetLeftChildIndex(int index) {
             return index * 2 + 1;
         }
 
-        int GetRightChild(int index) {
+        int GetRightChildIndex(int index) {
             return index * 2 + 2;
         }
 
-        int GetComparedChild(int index) {
-            int leftChildIndex = GetLeftChild(index);
-            int rightChildIndex = GetRightChild(index);
+        int GetComparedChildIndex(int index) {
+            int leftChildIndex = GetLeftChildIndex(index);
+            int rightChildIndex = GetRightChildIndex(index);
             if (NeedSwap(rightChildIndex, leftChildIndex)) return leftChildIndex;
             return rightChildIndex;
         }
 
         bool HasLeftChild(int index) {
-            return GetLeftChild(index) < count;
+            return GetLeftChildIndex(index) < count;
         }
 
         bool HasRightChild(int index) {
-            return GetRightChild(index) < count;
+            return GetRightChildIndex(index) < count;
         }
 
         bool NeedSwap(int parentIndex, int childIndex) {
-            return _comparer.Compare(_items[parentIndex], _items[childIndex]) >= 0;
+            return comparer.Compare(items[parentIndex], items[childIndex]) >= 0;
         }
 
     }

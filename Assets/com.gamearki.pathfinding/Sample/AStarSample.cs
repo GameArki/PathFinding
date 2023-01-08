@@ -41,22 +41,14 @@ namespace GameArki.PathFinding.Sample {
 
         void Awake() {
             // Heap<int> heap = new Heap<int>(Comparer<int>.Default, 10);
-            // heap.Push(5);
-            // heap.Push(3);
-            // heap.Push(2);
-            // heap.Push(6);
-            // heap.Push(4);
             // heap.Push(1);
-            // heap.Push(4);
-            // heap.Push(4);
             // heap.Push(2);
-            // heap.Push(2);
-            // int? node = heap.Pop();
-            // while (node != null)
-            // {
-            //     Debug.Log($"node:{node}");
-            //     node = heap.Pop();
-            // }
+            // heap.Push(3);
+            // heap.Push(4);
+            // heap.Push(5);
+            // heap.Foreach_BFS((a) => {
+            //     Debug.Log($"a:{a}");
+            // });
 
             isRunning = true;
             astarEntity = new AstarEntity(width, length);
