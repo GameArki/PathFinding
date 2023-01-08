@@ -28,10 +28,18 @@ namespace GameArki.PathFinding.AStar {
             this.length = length;
             this.capacity = width * length;
             heightMap = new int[width, length];
+
+            // 创建开启列表和关闭列表
+            openList = new Heap<AStarNode>(capacity);
             closedInfo = new Dictionary<int, bool>();
             opennedInfo = new Dictionary<int, bool>();
-            openList = new Heap<AStarNode>(capacity);
             nodePool = new ObjectPool<AStarNode>(capacity);
+        }
+
+        public List<Int2> FindSmoothPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove) {
+            var path = FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
+            if (path != null) path = GetSmoothPath(path, walkableHeightDiffRange);
+            return path;
         }
 
         public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove) {
@@ -60,8 +68,6 @@ namespace GameArki.PathFinding.AStar {
                 endNode = new AStarNode();
             }
             endNode.pos = endPos;
-
-            // 创建开启列表和关闭列表
 
             if (!IsInBoundary(startNode.pos)) {
                 return null;
@@ -129,12 +135,6 @@ namespace GameArki.PathFinding.AStar {
             // 如果开启列表为空，则无法找到路径
             return null;
 
-        }
-
-        public List<Int2> FindSmoothPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove) {
-            var path = FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
-            if (path != null) path = GetSmoothPath(path, walkableHeightDiffRange);
-            return path;
         }
 
         public void SetXYHeight(in Int2 pos, int height) {
