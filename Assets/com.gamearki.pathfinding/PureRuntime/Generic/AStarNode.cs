@@ -20,6 +20,14 @@ namespace GameArki.PathFinding.Generic {
             }
         }
 
+        public void Clear() {
+            f = 0;
+            g = 0;
+            h = 0;
+            pos = Int2.Zero;
+            parent = null;
+        }
+
     }
 
 }

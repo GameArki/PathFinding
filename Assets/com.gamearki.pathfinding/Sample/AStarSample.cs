@@ -171,7 +171,7 @@ namespace GameArki.PathFinding.Sample {
             GUILayout.Label($"性能测试(每帧寻路次数):{findTimes}");
             findTimes = (int)GUILayout.HorizontalSlider(findTimes, 1, maxFindTimes, GUILayout.Width(200));
             GUILayout.EndHorizontal();
-            
+
             GUILayout.BeginHorizontal();
             GUILayout.Label($"遍历节点数:{count}");
             GUILayout.EndHorizontal();
