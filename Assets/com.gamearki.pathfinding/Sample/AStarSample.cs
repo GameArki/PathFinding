@@ -26,15 +26,19 @@ namespace GameArki.PathFinding.Sample {
         [Header("开启路径平滑处理")]
         public bool needPathSmooth;
 
+        [Header("最大寻路次数")]
+        public int maxFindTimes = 500;
+
         bool isRunning = false;
 
         AstarEntity astarEntity;
         Int2 walkableHeightDiffRange;
 
         List<Int2> path;
+        int count;
 
         // For GUI
-        int findTimes_eachFrame = 1;
+        int findTimes = 1;
         int walkableHeightDiffRangeX = -1;
         int walkableHeightDiffRangeY = 0;
         int maxHeight = 5;
@@ -80,9 +84,9 @@ namespace GameArki.PathFinding.Sample {
             var endPos = GetXY(end.position);
             walkableHeightDiffRange.X = walkableHeightDiffRangeX;
             walkableHeightDiffRange.Y = walkableHeightDiffRangeY;
-            for (int i = 0; i < findTimes_eachFrame; i++) {
-                if (needPathSmooth) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
-                else path = astarEntity.FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove);
+            for (int i = 0; i < findTimes; i++) {
+                if (needPathSmooth) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
+                else path = astarEntity.FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
             }
         }
 
@@ -164,8 +168,12 @@ namespace GameArki.PathFinding.Sample {
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"性能测试(每帧寻路次数):{findTimes_eachFrame}");
-            findTimes_eachFrame = (int)GUILayout.HorizontalSlider(findTimes_eachFrame, 1, 1000, GUILayout.Width(200));
+            GUILayout.Label($"性能测试(每帧寻路次数):{findTimes}");
+            findTimes = (int)GUILayout.HorizontalSlider(findTimes, 1, maxFindTimes, GUILayout.Width(200));
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"遍历节点数:{count}");
             GUILayout.EndHorizontal();
 
             for (int i = 0; i < width; i++) {

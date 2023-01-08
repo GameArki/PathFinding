@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace GameArki.PathFinding.Generic {
@@ -5,6 +6,9 @@ namespace GameArki.PathFinding.Generic {
     public class ObjectPool<T> where T : new() {
 
         readonly Queue<T> objects;
+
+        public int Count => objects.Count;
+
         readonly int maxSize;
 
         public ObjectPool(int maxSize) {
@@ -13,26 +17,13 @@ namespace GameArki.PathFinding.Generic {
         }
 
         public bool TryDequeue(out T obj) {
-            obj = Dequeue();
-            return obj != null;
-        }
-
-        public T Dequeue() {
-            if (objects.Count == 0) {
-                return new T();
-            }
-
-            return objects.Dequeue();
-        }
-
-        public bool TryEnqueue(T obj) {
-            if (objects.Count >= maxSize) return false;
-            objects.Enqueue(obj);
-            return true;
+            return objects.TryDequeue(out obj);
         }
 
         public void Enqueue(T obj) {
-            if (objects.Count >= maxSize) return;
+            if (objects.Count >= maxSize) {
+                throw new Exception($"ObjPool is full! maxSize:{maxSize}");
+            }
             objects.Enqueue(obj);
         }
 
