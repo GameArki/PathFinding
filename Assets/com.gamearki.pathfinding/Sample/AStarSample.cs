@@ -100,7 +100,7 @@ namespace GameArki.PathFinding.Sample {
         }
 
         void DrawPath() {
-            if (path != null) {
+            if (path.Count != 0) {
                 Gizmos.color = Color.green;
                 for (int i = 0; i < path.Count - 1; i++) {
                     var pos1 = path[i];

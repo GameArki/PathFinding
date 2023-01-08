@@ -37,8 +37,8 @@ namespace GameArki.PathFinding.AStar {
             openList = new Heap<AStarNode>(capacity);
             closedInfo = new Dictionary<int, bool>();
             opennedInfo = new Dictionary<int, bool>();
-            
-            nodePool = new ObjectPool<AStarNode>(capacity);
+
+            nodePool = new ObjectPool<AStarNode>(capacity + 1000);
 
             path = new List<Int2>(capacity);
             smoothPath = new List<Int2>(capacity);
@@ -63,11 +63,13 @@ namespace GameArki.PathFinding.AStar {
         }
 
         public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, out int calculateCount) {
+            UnityEngine.Debug.Log($"{nodePool.Count}");
             calculateCount = 0;
             closedInfo.Clear();
             opennedInfo.Clear();
             openList.Clear();
-            Span<AStarNode> recycleNodes = new AStarNode[capacity];
+            path.Clear();
+            Span<AStarNode> recycleNodes = new AStarNode[capacity + 1000];
             int recycleNodeCount = 0;
 
             // 初始化起点和终点
@@ -99,14 +101,16 @@ namespace GameArki.PathFinding.AStar {
 
             while (openList.Count > 0) {
                 calculateCount++;
-                // 找到开启列表中F值
+
+                // 找到开启列表中F值最小节点
                 currentNode = GetLowestFNode(openList, endNode);
                 var curNodePos = currentNode.pos;
                 var endNodePos = endNode.pos;
 
                 // 从开启列表中移除当前节点，并将其添加到关闭列表中
-                opennedInfo[curNodePos.X + curNodePos.Y * width] = false;
-                closedInfo.Add(curNodePos.X + curNodePos.Y * width, true);
+                int posIndex = curNodePos.X + curNodePos.Y * width;
+                opennedInfo[posIndex] = false;
+                closedInfo.Add(posIndex, true);
 
                 // 如果当前节点为终点，则找到了最短路径
                 if (curNodePos.ValueEquals(endNodePos)) {
@@ -125,13 +129,14 @@ namespace GameArki.PathFinding.AStar {
                     return path;
                 }
 
-                AddNeighboursToOpenList(recycleNodes, ref recycleNodeCount, walkableHeightDiffRange, allowDiagonalMove, endNode, currentNode);
+                SearchNeighbours(recycleNodes, ref recycleNodeCount, walkableHeightDiffRange, allowDiagonalMove, endNode, currentNode);
 
             }
 
             // 如果开启列表为空，则无法找到路径
+            path.Clear();
             RecycleToNodePool(recycleNodes, recycleNodeCount);
-            return null;
+            return path;
 
         }
 
@@ -143,7 +148,7 @@ namespace GameArki.PathFinding.AStar {
             }
         }
 
-        void AddNeighboursToOpenList(Span<AStarNode> recycleNodes, ref int recycleNodeCount, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, AStarNode endNode, AStarNode currentNode) {
+        void SearchNeighbours(Span<AStarNode> recycleNodes, ref int recycleNodeCount, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, AStarNode endNode, AStarNode currentNode) {
             // 获取当前节点的周围节点
             Span<AStarNode> neighbours = new AStarNode[8];
             int nodeCount = 0;
@@ -153,28 +158,29 @@ namespace GameArki.PathFinding.AStar {
             int y = fromPos.Y;
             // 获取四周的节点
             Int2 topPos = new Int2(x, y + 1);
-            if (IsWalkableNeighbour(topPos, fromPos, walkableHeightDiffRange)) {
+            if (IsWalkableNeighbour(topPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(topPos)) {
                 if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                 node.pos = topPos;
                 neighbours[nodeCount++] = node;
                 recycleNodes[recycleNodeCount++] = node;
+                UpdateF
             }
             Int2 bottomPos = new Int2(x, y - 1);
-            if (IsWalkableNeighbour(bottomPos, fromPos, walkableHeightDiffRange)) {
+            if (IsWalkableNeighbour(bottomPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(bottomPos)) {
                 if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                 node.pos = bottomPos;
                 neighbours[nodeCount++] = node;
                 recycleNodes[recycleNodeCount++] = node;
             }
             Int2 leftPos = new Int2(x - 1, y);
-            if (IsWalkableNeighbour(leftPos, fromPos, walkableHeightDiffRange)) {
+            if (IsWalkableNeighbour(leftPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(leftPos)) {
                 if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                 node.pos = leftPos;
                 neighbours[nodeCount++] = node;
                 recycleNodes[recycleNodeCount++] = node;
             }
             Int2 rightPos = new Int2(x + 1, y);
-            if (IsWalkableNeighbour(rightPos, fromPos, walkableHeightDiffRange)) {
+            if (IsWalkableNeighbour(rightPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(rightPos)) {
                 if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                 node.pos = rightPos;
                 neighbours[nodeCount++] = node;
@@ -183,28 +189,28 @@ namespace GameArki.PathFinding.AStar {
 
             if (allowDiagonalMove) {
                 Int2 top_leftPos = new Int2(x - 1, y + 1);
-                if (IsWalkableNeighbour(top_leftPos, fromPos, walkableHeightDiffRange)) {
+                if (IsWalkableNeighbour(top_leftPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(top_leftPos)) {
                     if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                     node.pos = top_leftPos;
                     neighbours[nodeCount++] = node;
                     recycleNodes[recycleNodeCount++] = node;
                 }
                 Int2 bottom_leftPos = new Int2(x - 1, y - 1);
-                if (IsWalkableNeighbour(bottom_leftPos, fromPos, walkableHeightDiffRange)) {
+                if (IsWalkableNeighbour(bottom_leftPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(bottom_leftPos)) {
                     if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                     node.pos = bottom_leftPos;
                     neighbours[nodeCount++] = node;
                     recycleNodes[recycleNodeCount++] = node;
                 }
                 Int2 top_rightPos = new Int2(x + 1, y + 1);
-                if (IsWalkableNeighbour(top_rightPos, fromPos, walkableHeightDiffRange)) {
+                if (IsWalkableNeighbour(top_rightPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(top_rightPos)) {
                     if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                     node.pos = top_rightPos;
                     neighbours[nodeCount++] = node;
                     recycleNodes[recycleNodeCount++] = node;
                 }
                 Int2 bottom_rightPos = new Int2(x + 1, y - 1);
-                if (IsWalkableNeighbour(bottom_rightPos, fromPos, walkableHeightDiffRange)) {
+                if (IsWalkableNeighbour(bottom_rightPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(bottom_rightPos)) {
                     if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
                     node.pos = bottom_rightPos;
                     neighbours[nodeCount++] = node;
@@ -212,28 +218,31 @@ namespace GameArki.PathFinding.AStar {
                 }
             }
 
-            for (int i = 0; i < nodeCount; i++) {
-                var neighbour = neighbours[i];
-                var neighbourPos = neighbour.pos;
-                // 计算新的G值
-                var g_offset = GetDistance(currentNode, neighbour, allowDiagonalMove);
-                int newG = currentNode.g + g_offset;
 
-                // 如果新的G值比原来的G值小,计算新的F值 
-                bool neighbourExits = opennedInfo.TryGetValue(neighbourPos.X + neighbourPos.Y * width, out var flag) && flag;
-                if (!neighbourExits || newG < neighbour.g) {
-                    neighbour.g = newG;
-                    neighbour.h = GetDistance(neighbour, endNode, allowDiagonalMove);
-                    neighbour.f = neighbour.g + neighbour.h;
-                    neighbour.parent = currentNode;
-                }
+            // 将其添加到开启列表中 
+            openList.Push(node);
+            opennedInfo.Add(posIndex, true);
+        }
 
-                // 如果节点不在开启列表中，则将其添加到开启列表中 
-                if (!neighbourExits) {
-                    openList.Push(neighbour);
-                    opennedInfo.Add(neighbourPos.X + neighbourPos.Y * width, true);
-                }
+        void UpdateF(AStarNode node, AStarNode curNode, AStarNode endNode, bool allowDiagonalMove) {
+            var neighbourPos = node.pos;
+            // 计算新的G值
+            var g_offset = GetDistance(curNode, node, allowDiagonalMove);
+            int newG = curNode.g + g_offset;
+
+            // 如果新的G值比原来的G值小,计算新的F值 
+            if (newG < node.g) {
+                node.g = newG;
+                node.h = GetDistance(node, endNode, allowDiagonalMove);
+                node.f = node.g + node.h;
+                node.parent = curNode;
             }
+
+        }
+
+        bool IsInOpenList(in Int2 nodePos) {
+            int posIndex = nodePos.X + nodePos.Y * width;
+            return opennedInfo.TryGetValue(posIndex, out var flag) && flag;
         }
 
         public void SetXYHeight(in Int2 pos, int height) {
@@ -267,15 +276,13 @@ namespace GameArki.PathFinding.AStar {
 
         bool IsWalkableNeighbour(in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange) {
             if (!IsCanReach(tarPos, fromPos, walkableHeightDiffRange)) return false;
-            if (closedInfo.TryGetValue(tarPos.X + tarPos.Y * heightMap.GetLength(0), out var flag) && flag) return false;
+            if (closedInfo.TryGetValue(tarPos.X + tarPos.Y * width, out var flag) && flag) return false;
             return true;
         }
 
         bool IsInBoundary(in Int2 pos) {
             var x = pos.X;
             var y = pos.Y;
-            var width = heightMap.GetLength(0);
-            var length = heightMap.GetLength(1);
             if (x >= width || x < 0 || y >= length || y < 0) {
                 return false;
             }
