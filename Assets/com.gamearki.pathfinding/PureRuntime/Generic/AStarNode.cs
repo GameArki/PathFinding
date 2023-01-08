@@ -4,16 +4,16 @@ namespace GameArki.PathFinding.Generic {
 
     public class AStarNode : IComparable<AStarNode> {
 
-        public int F;
-        public int G;
-        public int H;
+        public int f;
+        public int g;
+        public int h;
         public Int2 pos;
-        public AStarNode Parent;
+        public AStarNode parent;
 
         public int CompareTo(AStarNode x) {
-            if (x.F > F) {
+            if (x.f > f) {
                 return -1;
-            } else if (x.F < F) {
+            } else if (x.f < f) {
                 return 1;
             } else {
                 return 0;

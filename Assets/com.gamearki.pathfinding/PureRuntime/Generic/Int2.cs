@@ -1,35 +1,30 @@
-namespace GameArki.PathFinding.Generic
-{
+namespace GameArki.PathFinding.Generic {
 
-    public struct Int2
-    {
+    public struct Int2 {
 
         public int X;
         public int Y;
 
-        public Int2(int x, int y)
-        {
+        public static Int2 Zero => new Int2(0, 0);
+        
+        public Int2(int x, int y) {
             X = x;
             Y = y;
         }
 
-        public bool ValueEquals(Int2 v)
-        {
+        public bool ValueEquals(Int2 v) {
             return X == v.X && Y == v.Y;
         }
 
-        public static Int2 operator +(Int2 v1, Int2 v2)
-        {
+        public static Int2 operator +(Int2 v1, Int2 v2) {
             return new Int2(v1.X + v2.X, v1.Y + v2.Y);
         }
 
-        public static Int2 operator -(Int2 v1, Int2 v2)
-        {
+        public static Int2 operator -(Int2 v1, Int2 v2) {
             return new Int2(v1.X - v2.X, v1.Y - v2.Y);
         }
 
-        public override string ToString()
-        {
+        public override string ToString() {
             return $"({X},{Y})";
         }
 

@@ -111,6 +111,14 @@ namespace GameArki.PathFinding.Generic {
             }
         }
 
+        public void Clear() {
+            var defaultT = default(T);
+            for (int i = 0; i < count; i++) {
+                items[i] = defaultT;
+            }
+            count = 0;
+        }
+
         int GetParentIndex(int index) {
             return (index - 1) / 2;
         }

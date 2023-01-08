@@ -15,39 +15,53 @@ namespace GameArki.PathFinding.AStar {
         int[,] heightMap;
         int capacity;
 
-        Dictionary<int, bool> _closeListInfo;
-        Dictionary<int, bool> _openListInfo;
+        Dictionary<int, bool> closedInfo;
+        Dictionary<int, bool> opennedInfo;
+        Heap<AStarNode> openList;
+        ObjectPool<AStarNode> nodePool;
 
         static readonly int MOVE_DIAGONAL_COST = 141;
         static readonly int MOVE_STRAIGHT_COST = 100;
-
 
         public AstarEntity(int width, int length) {
             this.width = width;
             this.length = length;
             this.capacity = width * length;
             heightMap = new int[width, length];
-            _closeListInfo = new Dictionary<int, bool>();
-            _openListInfo = new Dictionary<int, bool>();
+            closedInfo = new Dictionary<int, bool>();
+            opennedInfo = new Dictionary<int, bool>();
+            openList = new Heap<AStarNode>(capacity);
+            nodePool = new ObjectPool<AStarNode>(capacity);
         }
 
         public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove) {
-            _closeListInfo.Clear();
-            _openListInfo.Clear();
+            closedInfo.Clear();
+            opennedInfo.Clear();
+            openList.Foreach((node) => {
+                node.f = 0;
+                node.g = 0;
+                node.h = 0;
+                node.pos = Int2.Zero;
+                node.parent = null;
+                nodePool.Enqueue(node);
+            });
+            openList.Clear();
 
             // 初始化起点和终点
-            AStarNode startNode = new AStarNode() {
-                pos = startPos,
-                G = 0,
-                H = GetManhattanDistance(startPos, endPos),
-                F = 0
-            };
-            AStarNode endNode = new AStarNode() {
-                pos = endPos,
-            };
+            if (!nodePool.TryDequeue(out var startNode)) {
+                startNode = new AStarNode();
+            }
+            startNode.pos = startPos;
+            startNode.g = 0;
+            startNode.h = GetManhattanDistance(startPos, endPos);
+            startNode.f = 0;
+
+            if (!nodePool.TryDequeue(out var endNode)) {
+                endNode = new AStarNode();
+            }
+            endNode.pos = endPos;
 
             // 创建开启列表和关闭列表
-            Heap<AStarNode> openList = new Heap<AStarNode>(capacity);
 
             if (!IsInBoundary(startNode.pos)) {
                 return null;
@@ -67,8 +81,8 @@ namespace GameArki.PathFinding.AStar {
                 var endNodePos = endNode.pos;
 
                 // 从开启列表中移除当前节点，并将其添加到关闭列表中
-                _openListInfo[curNodePos.X + curNodePos.Y * width] = false;
-                _closeListInfo.Add(curNodePos.X + curNodePos.Y * width, true);
+                opennedInfo[curNodePos.X + curNodePos.Y * width] = false;
+                closedInfo.Add(curNodePos.X + curNodePos.Y * width, true);
 
                 // 如果当前节点为终点，则找到了最短路径
                 if (curNodePos.ValueEquals(endNodePos)) {
@@ -76,7 +90,7 @@ namespace GameArki.PathFinding.AStar {
                     Stack<AStarNode> pathStack = new Stack<AStarNode>();
                     while (currentNode != null) {
                         pathStack.Push(currentNode);
-                        currentNode = currentNode.Parent;
+                        currentNode = currentNode.parent;
                     }
                     List<Int2> path = new List<Int2>(pathStack.Count);
                     while (pathStack.TryPop(out var node)) {
@@ -92,21 +106,21 @@ namespace GameArki.PathFinding.AStar {
                     var neighbourPos = neighbour.pos;
                     // 计算新的G值
                     var g_offset = GetDistance(currentNode, neighbour, allowDiagonalMove);
-                    int newG = currentNode.G + g_offset;
+                    int newG = currentNode.g + g_offset;
 
                     // 如果新的G值比原来的G值小,计算新的F值 
-                    bool neighbourExits = _openListInfo.TryGetValue(neighbourPos.X + neighbourPos.Y * width, out var flag) && flag;
-                    if (!neighbourExits || newG < neighbour.G) {
-                        neighbour.G = newG;
-                        neighbour.H = GetDistance(neighbour, endNode, allowDiagonalMove);
-                        neighbour.F = neighbour.G + neighbour.H;
-                        neighbour.Parent = currentNode;
+                    bool neighbourExits = opennedInfo.TryGetValue(neighbourPos.X + neighbourPos.Y * width, out var flag) && flag;
+                    if (!neighbourExits || newG < neighbour.g) {
+                        neighbour.g = newG;
+                        neighbour.h = GetDistance(neighbour, endNode, allowDiagonalMove);
+                        neighbour.f = neighbour.g + neighbour.h;
+                        neighbour.parent = currentNode;
                     }
 
                     // 如果节点不在开启列表中，则将其添加到开启列表中 
                     if (!neighbourExits) {
                         openList.Push(neighbour);
-                        _openListInfo.Add(neighbourPos.X + neighbourPos.Y * width, true);
+                        opennedInfo.Add(neighbourPos.X + neighbourPos.Y * width, true);
                     }
                 }
 
@@ -185,7 +199,7 @@ namespace GameArki.PathFinding.AStar {
 
         bool IsWalkableNeighbour(in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange) {
             if (!IsCanReach(tarPos, fromPos, walkableHeightDiffRange)) return false;
-            if (_closeListInfo.TryGetValue(tarPos.X + tarPos.Y * heightMap.GetLength(0), out var flag) && flag) return false;
+            if (closedInfo.TryGetValue(tarPos.X + tarPos.Y * heightMap.GetLength(0), out var flag) && flag) return false;
             return true;
         }
 

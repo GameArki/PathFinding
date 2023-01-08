@@ -165,10 +165,8 @@ namespace GameArki.PathFinding.Sample {
 
             GUILayout.BeginHorizontal();
             GUILayout.Label($"性能测试(每帧寻路次数):{findTimes_eachFrame}");
-            findTimes_eachFrame = (int)GUILayout.HorizontalSlider(findTimes_eachFrame, 1, 500, GUILayout.Width(200));
+            findTimes_eachFrame = (int)GUILayout.HorizontalSlider(findTimes_eachFrame, 1, 1000, GUILayout.Width(200));
             GUILayout.EndHorizontal();
-
-
 
             for (int i = 0; i < width; i++) {
                 for (int j = 0; j < length; j++) {
