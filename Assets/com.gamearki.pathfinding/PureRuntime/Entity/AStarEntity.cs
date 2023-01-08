@@ -15,13 +15,13 @@ namespace GameArki.PathFinding.AStar {
         int[,] heightMap;
         int capacity;
 
-        Dictionary<int, bool> closedInfo;
-        Dictionary<int, bool> opennedInfo;
-        Heap<AStarNode> openList;
-        ObjectPool<AStarNode> nodePool;
-
         static readonly int MOVE_DIAGONAL_COST = 141;
         static readonly int MOVE_STRAIGHT_COST = 100;
+
+        Heap<AStarNode> openList;
+        Dictionary<long, AStarNode> openDic;
+        Dictionary<long, bool> closedDic;
+        ObjectPool<AStarNode> nodePool;
 
         List<Int2> path;
         List<Int2> smoothPath;
@@ -35,10 +35,10 @@ namespace GameArki.PathFinding.AStar {
             heightMap = new int[width, length];
 
             openList = new Heap<AStarNode>(capacity);
-            closedInfo = new Dictionary<int, bool>();
-            opennedInfo = new Dictionary<int, bool>();
+            closedDic = new Dictionary<long, bool>();
+            openDic = new Dictionary<long, AStarNode>();
 
-            nodePool = new ObjectPool<AStarNode>(capacity + 1000);
+            nodePool = new ObjectPool<AStarNode>(capacity);
 
             path = new List<Int2>(capacity);
             smoothPath = new List<Int2>(capacity);
@@ -63,14 +63,13 @@ namespace GameArki.PathFinding.AStar {
         }
 
         public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, out int calculateCount) {
-            UnityEngine.Debug.Log($"{nodePool.Count}");
             calculateCount = 0;
-            closedInfo.Clear();
-            opennedInfo.Clear();
+            closedDic.Clear();
+            openDic.Clear();
             openList.Clear();
-            path.Clear();
-            Span<AStarNode> recycleNodes = new AStarNode[capacity + 1000];
+            Span<AStarNode> recycleNodes = new AStarNode[capacity];
             int recycleNodeCount = 0;
+            // UnityEngine.Debug.Log($"nodePool:{nodePool.Count}");
 
             // 初始化起点和终点
             if (!nodePool.TryDequeue(out var startNode)) {
@@ -84,7 +83,6 @@ namespace GameArki.PathFinding.AStar {
 
             if (!nodePool.TryDequeue(out var endNode)) {
                 endNode = new AStarNode();
-                recycleNodes[recycleNodeCount++] = endNode;
             }
             endNode.pos = endPos;
 
@@ -101,16 +99,15 @@ namespace GameArki.PathFinding.AStar {
 
             while (openList.Count > 0) {
                 calculateCount++;
-
-                // 找到开启列表中F值最小节点
+                // 找到开启列表中F值
                 currentNode = GetLowestFNode(openList, endNode);
+                // UnityEngine.Debug.Log($"openList.Pop {currentNode.pos} F  {currentNode.f}");
                 var curNodePos = currentNode.pos;
                 var endNodePos = endNode.pos;
 
                 // 从开启列表中移除当前节点，并将其添加到关闭列表中
-                int posIndex = curNodePos.X + curNodePos.Y * width;
-                opennedInfo[posIndex] = false;
-                closedInfo.Add(posIndex, true);
+                var posKey = CombineKey(curNodePos.X, curNodePos.Y);
+                closedDic.Add(posKey, true);
 
                 // 如果当前节点为终点，则找到了最短路径
                 if (curNodePos.ValueEquals(endNodePos)) {
@@ -129,14 +126,13 @@ namespace GameArki.PathFinding.AStar {
                     return path;
                 }
 
-                SearchNeighbours(recycleNodes, ref recycleNodeCount, walkableHeightDiffRange, allowDiagonalMove, endNode, currentNode);
+                SearchAndUpdateNeighbourhood(recycleNodes, ref recycleNodeCount, walkableHeightDiffRange, allowDiagonalMove, endNode, currentNode);
 
             }
 
             // 如果开启列表为空，则无法找到路径
-            path.Clear();
             RecycleToNodePool(recycleNodes, recycleNodeCount);
-            return path;
+            return null;
 
         }
 
@@ -146,103 +142,137 @@ namespace GameArki.PathFinding.AStar {
                 node.Clear();
                 nodePool.Enqueue(node);
             }
+            // UnityEngine.Debug.Log($"recycleNodeCount:{recycleNodeCount}");
         }
 
-        void SearchNeighbours(Span<AStarNode> recycleNodes, ref int recycleNodeCount, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, AStarNode endNode, AStarNode currentNode) {
+        void SearchAndUpdateNeighbourhood(Span<AStarNode> recycleNodes, ref int recycleNodeCount, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, AStarNode endNode, AStarNode currentNode) {
             // 获取当前节点的周围节点
-            Span<AStarNode> neighbours = new AStarNode[8];
-            int nodeCount = 0;
             // 获取当前节点的位置
-            var fromPos = currentNode.pos;
-            int x = fromPos.X;
-            int y = fromPos.Y;
+            var currentPos = currentNode.pos;
+            int x = currentPos.X;
+            int y = currentPos.Y;
             // 获取四周的节点
             Int2 topPos = new Int2(x, y + 1);
-            if (IsWalkableNeighbour(topPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(topPos)) {
-                if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                node.pos = topPos;
-                neighbours[nodeCount++] = node;
-                recycleNodes[recycleNodeCount++] = node;
-                UpdateF
-            }
+            SearchAndUpdateNeighbour(
+                currentNode: currentNode,
+                endNode: endNode,
+                allowDiagonalMove: allowDiagonalMove,
+                walkableHeightDiffRange: walkableHeightDiffRange,
+                pos: topPos,
+                recycleNodes: recycleNodes,
+                recycleNodeCount: ref recycleNodeCount
+            );
             Int2 bottomPos = new Int2(x, y - 1);
-            if (IsWalkableNeighbour(bottomPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(bottomPos)) {
-                if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                node.pos = bottomPos;
-                neighbours[nodeCount++] = node;
-                recycleNodes[recycleNodeCount++] = node;
-            }
+            SearchAndUpdateNeighbour(
+                currentNode: currentNode,
+                endNode: endNode,
+                allowDiagonalMove: allowDiagonalMove,
+                walkableHeightDiffRange: walkableHeightDiffRange,
+                pos: bottomPos,
+                recycleNodes: recycleNodes,
+                recycleNodeCount: ref recycleNodeCount
+            );
             Int2 leftPos = new Int2(x - 1, y);
-            if (IsWalkableNeighbour(leftPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(leftPos)) {
-                if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                node.pos = leftPos;
-                neighbours[nodeCount++] = node;
-                recycleNodes[recycleNodeCount++] = node;
-            }
+            SearchAndUpdateNeighbour(
+                currentNode: currentNode,
+                endNode: endNode,
+                allowDiagonalMove: allowDiagonalMove,
+                walkableHeightDiffRange: walkableHeightDiffRange,
+                pos: leftPos,
+                recycleNodes: recycleNodes,
+                recycleNodeCount: ref recycleNodeCount
+            );
             Int2 rightPos = new Int2(x + 1, y);
-            if (IsWalkableNeighbour(rightPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(rightPos)) {
-                if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                node.pos = rightPos;
-                neighbours[nodeCount++] = node;
-                recycleNodes[recycleNodeCount++] = node;
-            }
+            SearchAndUpdateNeighbour(
+                currentNode: currentNode,
+                endNode: endNode,
+                allowDiagonalMove: allowDiagonalMove,
+                walkableHeightDiffRange: walkableHeightDiffRange,
+                pos: rightPos,
+                recycleNodes: recycleNodes,
+                recycleNodeCount: ref recycleNodeCount
+            );
 
             if (allowDiagonalMove) {
                 Int2 top_leftPos = new Int2(x - 1, y + 1);
-                if (IsWalkableNeighbour(top_leftPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(top_leftPos)) {
-                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                    node.pos = top_leftPos;
-                    neighbours[nodeCount++] = node;
-                    recycleNodes[recycleNodeCount++] = node;
-                }
+                SearchAndUpdateNeighbour(
+                    currentNode: currentNode,
+                    endNode: endNode,
+                    allowDiagonalMove: allowDiagonalMove,
+                    walkableHeightDiffRange: walkableHeightDiffRange,
+                    pos: top_leftPos,
+                    recycleNodes: recycleNodes,
+                    recycleNodeCount: ref recycleNodeCount
+                );
                 Int2 bottom_leftPos = new Int2(x - 1, y - 1);
-                if (IsWalkableNeighbour(bottom_leftPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(bottom_leftPos)) {
-                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                    node.pos = bottom_leftPos;
-                    neighbours[nodeCount++] = node;
-                    recycleNodes[recycleNodeCount++] = node;
-                }
+                SearchAndUpdateNeighbour(
+                    currentNode: currentNode,
+                    endNode: endNode,
+                    allowDiagonalMove: allowDiagonalMove,
+                    walkableHeightDiffRange: walkableHeightDiffRange,
+                    pos: bottom_leftPos,
+                    recycleNodes: recycleNodes,
+                    recycleNodeCount: ref recycleNodeCount
+                );
                 Int2 top_rightPos = new Int2(x + 1, y + 1);
-                if (IsWalkableNeighbour(top_rightPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(top_rightPos)) {
-                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                    node.pos = top_rightPos;
-                    neighbours[nodeCount++] = node;
-                    recycleNodes[recycleNodeCount++] = node;
-                }
+                SearchAndUpdateNeighbour(
+                    currentNode: currentNode,
+                    endNode: endNode,
+                    allowDiagonalMove: allowDiagonalMove,
+                    walkableHeightDiffRange: walkableHeightDiffRange,
+                    pos: top_rightPos,
+                    recycleNodes: recycleNodes,
+                    recycleNodeCount: ref recycleNodeCount
+                );
                 Int2 bottom_rightPos = new Int2(x + 1, y - 1);
-                if (IsWalkableNeighbour(bottom_rightPos, fromPos, walkableHeightDiffRange) && !IsInOpenList(bottom_rightPos)) {
-                    if (!nodePool.TryDequeue(out var node)) node = new AStarNode();
-                    node.pos = bottom_rightPos;
-                    neighbours[nodeCount++] = node;
-                    recycleNodes[recycleNodeCount++] = node;
+                SearchAndUpdateNeighbour(
+                    currentNode: currentNode,
+                    endNode: endNode,
+                    allowDiagonalMove: allowDiagonalMove,
+                    walkableHeightDiffRange: walkableHeightDiffRange,
+                    pos: bottom_rightPos,
+                    recycleNodes: recycleNodes,
+                    recycleNodeCount: ref recycleNodeCount
+                );
+            }
+
+        }
+
+        void SearchAndUpdateNeighbour(AStarNode currentNode, AStarNode endNode, bool allowDiagonalMove,
+        in Int2 pos, in Int2 walkableHeightDiffRange,
+        Span<AStarNode> recycleNodes, ref int recycleNodeCount
+        ) {
+            // - 邻接点是否可走
+            if (IsWalkableNeighbour(pos, currentNode.pos, walkableHeightDiffRange)) {
+                // - 是否是新的邻接点,是则加入openDic以及openList
+                var posKey = CombineKey(pos.X, pos.Y);
+                bool gotFromOpenDic = openDic.TryGetValue(posKey, out var neighbourNode);
+                bool gotFromPool = !gotFromOpenDic ? nodePool.TryDequeue(out neighbourNode) : false;
+                bool needCreate = !gotFromOpenDic && !gotFromPool;
+
+                if (needCreate) neighbourNode = new AStarNode();
+                if (needCreate || gotFromPool) recycleNodes[recycleNodeCount++] = neighbourNode;
+                neighbourNode.pos = pos;
+
+                // - 经过邻接点就需要重新计算GHF
+                var g_offset = GetDistance(currentNode, neighbourNode, allowDiagonalMove);
+                int newG = currentNode.g + g_offset;
+
+                // 如果新的G值比原来的G值小,计算新的F值 
+                if (!gotFromOpenDic || newG < neighbourNode.g) {
+                    neighbourNode.g = newG;
+                    neighbourNode.h = GetDistance(neighbourNode, endNode, allowDiagonalMove);
+                    neighbourNode.f = neighbourNode.g + neighbourNode.h;
+                    neighbourNode.parent = currentNode;
                 }
+
+                if (!gotFromOpenDic) {
+                    openList.Push(neighbourNode);
+                    // UnityEngine.Debug.Log($"openList.Push {neighbourNode.pos} F  {neighbourNode.f} newG:{newG}");
+                    openDic.Add(posKey, neighbourNode);
+                }
+
             }
-
-
-            // 将其添加到开启列表中 
-            openList.Push(node);
-            opennedInfo.Add(posIndex, true);
-        }
-
-        void UpdateF(AStarNode node, AStarNode curNode, AStarNode endNode, bool allowDiagonalMove) {
-            var neighbourPos = node.pos;
-            // 计算新的G值
-            var g_offset = GetDistance(curNode, node, allowDiagonalMove);
-            int newG = curNode.g + g_offset;
-
-            // 如果新的G值比原来的G值小,计算新的F值 
-            if (newG < node.g) {
-                node.g = newG;
-                node.h = GetDistance(node, endNode, allowDiagonalMove);
-                node.f = node.g + node.h;
-                node.parent = curNode;
-            }
-
-        }
-
-        bool IsInOpenList(in Int2 nodePos) {
-            int posIndex = nodePos.X + nodePos.Y * width;
-            return opennedInfo.TryGetValue(posIndex, out var flag) && flag;
         }
 
         public void SetXYHeight(in Int2 pos, int height) {
@@ -274,15 +304,17 @@ namespace GameArki.PathFinding.AStar {
             return Math.Abs(pos1.X - pos2.X) + Math.Abs(pos1.Y - pos2.Y);
         }
 
-        bool IsWalkableNeighbour(in Int2 tarPos, in Int2 fromPos, in Int2 walkableHeightDiffRange) {
-            if (!IsCanReach(tarPos, fromPos, walkableHeightDiffRange)) return false;
-            if (closedInfo.TryGetValue(tarPos.X + tarPos.Y * width, out var flag) && flag) return false;
+        bool IsWalkableNeighbour(in Int2 neighbourPos, in Int2 curPos, in Int2 walkableHeightDiffRange) {
+            if (!IsCanReach(neighbourPos, curPos, walkableHeightDiffRange)) return false;
+            if (closedDic.TryGetValue(neighbourPos.X + neighbourPos.Y * heightMap.GetLength(0), out var flag) && flag) return false;
             return true;
         }
 
         bool IsInBoundary(in Int2 pos) {
             var x = pos.X;
             var y = pos.Y;
+            var width = heightMap.GetLength(0);
+            var length = heightMap.GetLength(1);
             if (x >= width || x < 0 || y >= length || y < 0) {
                 return false;
             }
@@ -299,6 +331,11 @@ namespace GameArki.PathFinding.AStar {
             return IsInBoundary(tarPos) && IsWalkable(tarPos, fromPos, walkableHeightDiffRange);
         }
 
+        long CombineKey(int x, int y) {
+            long key = (long)x << 32;
+            key |= (long)y;
+            return key;
+        }
 
         #region [路径点优化]
 
