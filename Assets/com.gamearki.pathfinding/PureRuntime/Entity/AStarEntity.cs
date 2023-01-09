@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GameArki.PathFinding.Generic;
-using static UnityEngine.Debug;
+// using static UnityEngine.Debug;
 
 namespace GameArki.PathFinding.AStar {
 
@@ -241,35 +241,34 @@ namespace GameArki.PathFinding.AStar {
         Span<AStarNode> recycleNodes, ref int recycleNodeCount
         ) {
             // - 邻接点是否可走
-            if (IsWalkableNeighbour(pos, currentNode.pos, walkableHeightDiffRange)) {
-                // - 是否是新的邻接点,是则加入openDic以及openList
-                var posKey = CombineKey(pos.X, pos.Y);
-                bool gotFromOpenDic = openDic.TryGetValue(posKey, out var neighbourNode);
-                bool gotFromPool = !gotFromOpenDic ? nodePool.TryDequeue(out neighbourNode) : false;
-                bool needCreate = !gotFromOpenDic && !gotFromPool;
-                // if (gotFromPool) Log($"nodePool Dequeue: {neighbourNode.pos}");
-                if (needCreate) neighbourNode = new AStarNode();
-                if (needCreate || gotFromPool) recycleNodes[recycleNodeCount++] = neighbourNode;
-                neighbourNode.pos = pos;
+            if (!IsWalkableNeighbour(pos, currentNode.pos, walkableHeightDiffRange)) return;
 
-                // - 经过邻接点就需要重新计算GHF
-                var g_offset = GetDistance(currentNode, neighbourNode, allowDiagonalMove);
-                int newG = currentNode.g + g_offset;
+            // - 是否是新的邻接点,是则加入openDic以及openList
+            var posKey = CombineKey(pos.X, pos.Y);
+            bool gotFromOpenDic = openDic.TryGetValue(posKey, out var neighbourNode);
+            bool gotFromPool = !gotFromOpenDic ? nodePool.TryDequeue(out neighbourNode) : false;
+            bool needCreate = !gotFromOpenDic && !gotFromPool;
+            // if (gotFromPool) Log($"nodePool Dequeue: {neighbourNode.pos}");
+            if (needCreate) neighbourNode = new AStarNode();
+            if (needCreate || gotFromPool) recycleNodes[recycleNodeCount++] = neighbourNode;
+            neighbourNode.pos = pos;
 
-                // 如果新的G值比原来的G值小,计算新的F值 
-                if (!gotFromOpenDic || newG < neighbourNode.g) {
-                    neighbourNode.g = newG;
-                    neighbourNode.h = GetDistance(neighbourNode, endNode, allowDiagonalMove);
-                    neighbourNode.f = neighbourNode.g + neighbourNode.h;
-                    neighbourNode.parent = currentNode;
-                }
+            // - 经过邻接点就需要重新计算GHF
+            var g_offset = GetDistance(currentNode, neighbourNode, allowDiagonalMove);
+            int newG = currentNode.g + g_offset;
 
-                if (!gotFromOpenDic) {
-                    openList.Push(neighbourNode);
-                    // Log($"openList.Push {neighbourNode.pos} F  {neighbourNode.f} newG:{newG}");
-                    openDic.Add(posKey, neighbourNode);
-                }
+            // 如果新的G值比原来的G值小,计算新的F值 
+            if (!gotFromOpenDic || newG < neighbourNode.g) {
+                neighbourNode.g = newG;
+                neighbourNode.h = GetDistance(neighbourNode, endNode, allowDiagonalMove);
+                neighbourNode.f = neighbourNode.g + neighbourNode.h;
+                neighbourNode.parent = currentNode;
+            }
 
+            if (!gotFromOpenDic) {
+                openList.Push(neighbourNode);
+                // Log($"openList.Push {neighbourNode.pos} F  {neighbourNode.f} newG:{newG}");
+                openDic.Add(posKey, neighbourNode);
             }
         }
 
@@ -304,15 +303,13 @@ namespace GameArki.PathFinding.AStar {
 
         bool IsWalkableNeighbour(in Int2 neighbourPos, in Int2 curPos, in Int2 walkableHeightDiffRange) {
             if (!IsCanReach(neighbourPos, curPos, walkableHeightDiffRange)) return false;
-            if (closedDic.TryGetValue(neighbourPos.X + neighbourPos.Y * heightMap.GetLength(0), out var flag) && flag) return false;
+            if (closedDic.TryGetValue(neighbourPos.X + neighbourPos.Y * width, out var flag) && flag) return false;
             return true;
         }
 
         bool IsInBoundary(in Int2 pos) {
             var x = pos.X;
             var y = pos.Y;
-            var width = heightMap.GetLength(0);
-            var length = heightMap.GetLength(1);
             if (x >= width || x < 0 || y >= length || y < 0) {
                 return false;
             }
