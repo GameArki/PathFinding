@@ -73,6 +73,7 @@ namespace GameArki.PathFinding.Sample {
                         var newHeight = oldHeight + v;
                         newHeight = newHeight > maxHeight ? maxHeight : newHeight;
                         astarEntity.SetXYHeight(pos, newHeight);
+                        cubePos = start.position;
                     }
                 }
             }
@@ -97,6 +98,45 @@ namespace GameArki.PathFinding.Sample {
             DrawMapLine();
             DrawHeightMap();
             DrawPath();
+            if (showDynamicPath) DrawDynamicPath();
+        }
+
+        int pathIndex = 0;
+        Vector3 cubePos;
+        float cubeSpeed = 0.02f;
+        bool showDynamicPath;
+        Vector3 startPos;
+        Vector3 endPos;
+        void DrawDynamicPath() {
+            if (start.position != startPos || end.position != endPos) {
+                cubePos = start.position;
+            }
+
+            startPos = start.position;
+            endPos = end.position;
+            int pathCount = path.Count;
+            if (pathCount == 0) {
+                cubePos = startPos;
+                pathIndex = 0;
+            } else {
+                if (pathIndex >= pathCount) {
+                    cubePos = start.position;
+                    pathIndex = 0;
+                }
+
+                var pathPos = path[pathIndex];
+                var nextPos = new Vector3(pathPos.X + 0.5f, pathPos.Y + 0.5f, 0);
+                if (cubePos != nextPos) {
+                    var dir = (nextPos - cubePos).normalized;
+                    cubePos += cubeSpeed * dir;
+                    var dir2 = (nextPos - cubePos).normalized;
+                    if (dir2 == -dir) cubePos = nextPos;
+                } else {
+                    pathIndex++;
+                }
+            }
+
+            Gizmos.DrawCube(cubePos, new Vector3(1, 1, 1));
         }
 
         void DrawPath() {
@@ -127,7 +167,7 @@ namespace GameArki.PathFinding.Sample {
                     color.a = (float)height / maxHeight;
                     Gizmos.color = color;
                     if (height != 0) {
-                        Gizmos.DrawCube(new Vector3(i + 0.5f, j + 0.5f), new Vector3(0.8f, 0.8f, 1f));
+                        Gizmos.DrawCube(new Vector3(i + 0.5f, j + 0.5f), new Vector3(1, 1, 1));
                     }
                 }
             }
@@ -175,6 +215,12 @@ namespace GameArki.PathFinding.Sample {
             GUILayout.BeginHorizontal();
             GUILayout.Label($"遍历节点数:{count}");
             GUILayout.EndHorizontal();
+
+            GUILayout.BeginVertical();
+            showDynamicPath = GUILayout.Toggle(showDynamicPath, $"开启动态路径展示");
+            GUILayout.Label($"移动速度: {cubeSpeed}");
+            cubeSpeed = GUILayout.HorizontalSlider(cubeSpeed, 0.02f, 0.5f, GUILayout.Width(100));
+            GUILayout.EndVertical();
 
             for (int i = 0; i < width; i++) {
                 for (int j = 0; j < length; j++) {

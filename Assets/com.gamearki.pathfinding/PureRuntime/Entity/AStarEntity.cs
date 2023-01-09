@@ -63,6 +63,14 @@ namespace GameArki.PathFinding.AStar {
 
         public List<Int2> FindPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, out int calculateCount) {
             calculateCount = 0;
+
+            if (CanGoStraight(startPos, endPos, walkableHeightDiffRange)) {
+                path.Clear();
+                path.Add(startPos);
+                path.Add(endPos);
+                return path;
+            }
+
             closedDic.Clear();
             openDic.Clear();
             openList.Clear();
