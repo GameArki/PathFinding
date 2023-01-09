@@ -6,7 +6,7 @@ namespace GameArki.PathFinding.Generic {
         public int Y;
 
         public static Int2 Zero => new Int2(0, 0);
-        
+
         public Int2(int x, int y) {
             X = x;
             Y = y;
@@ -22,6 +22,14 @@ namespace GameArki.PathFinding.Generic {
 
         public static Int2 operator -(Int2 v1, Int2 v2) {
             return new Int2(v1.X - v2.X, v1.Y - v2.Y);
+        }
+
+        public static bool operator ==(Int2 v1, Int2 v2) {
+            return v1.X == v2.X && v1.Y == v2.Y;
+        }
+
+        public static bool operator !=(Int2 v1, Int2 v2) {
+            return v1.X != v2.X || v1.Y != v2.Y;
         }
 
         public override string ToString() {
