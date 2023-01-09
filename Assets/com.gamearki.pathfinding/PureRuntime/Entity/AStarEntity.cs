@@ -343,9 +343,16 @@ namespace GameArki.PathFinding.AStar {
         #region [路径点优化]
 
         public List<Int2> FindSmoothPath(List<Int2> path, in Int2 walkableHeightDiffRange) {
-            smoothPath.Clear();
+            if (path.Count == 0) {
+                smoothPath.Clear();
+                return smoothPath;
+            }
+
             var pos1 = path[0];
             var pos2 = path[1];
+            int pos1Index = 0;
+
+            smoothPath.Clear();
             smoothPath.Add(pos1);
             smoothPath.Add(pos2);
             for (int i = 2; i < path.Count; i++) {
@@ -357,17 +364,25 @@ namespace GameArki.PathFinding.AStar {
                     pos2 = curPos2;
                     smoothPath.RemoveAt(smoothPath.Count - 1);
                     smoothPath.Add(curPos2);
-                } else if (CanGoStraight(pos1, curPos2, walkableHeightDiffRange)) {
-                    // 斜率不相同且可以直达,则可去除期间多余路径点
-                    // 更新节点
-                    pos2 = curPos2;
-                    smoothPath.RemoveAt(smoothPath.Count - 1);
-                    smoothPath.Add(curPos2);
                 } else {
-                    // 更新节点
-                    pos1 = curPos1;
+                    // 斜率不相同且可以直达,则可去除期间多余路径点
+                    while (!CanGoStraight(pos1, curPos2, walkableHeightDiffRange)) {
+                        // UnityEngine.Debug.Log($" pos1{pos1}  curPos2{curPos2}  Cant GoStraight");
+                        var nextPos = path[pos1Index + 1];
+                        if (nextPos == curPos2) break;
+
+                        pos1 = nextPos;
+                        pos1Index++;
+                    }
+
                     pos2 = curPos2;
+                    smoothPath.ForEach((p) => {
+                        // UnityEngine.Debug.Log($"  p {p}");
+                    });
+                    smoothPath.RemoveAt(smoothPath.Count - 1);
+                    smoothPath.Add(pos1);
                     smoothPath.Add(curPos2);
+                    // UnityEngine.Debug.Log($" pos1{pos1}  curPos2{curPos2}  GoStraight pos2:{pos2}   curPos1:{curPos1} ");
                 }
             }
 
