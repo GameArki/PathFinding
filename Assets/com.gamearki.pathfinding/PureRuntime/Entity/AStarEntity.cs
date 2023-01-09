@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GameArki.PathFinding.Generic;
+using static UnityEngine.Debug;
 
 namespace GameArki.PathFinding.AStar {
 
@@ -51,9 +52,7 @@ namespace GameArki.PathFinding.AStar {
 
         public List<Int2> FindSmoothPath(in Int2 startPos, in Int2 endPos, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, out int count) {
             FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
-            if (path.Count != 0) {
-                FindSmoothPath(path, walkableHeightDiffRange);
-            }
+            FindSmoothPath(path, walkableHeightDiffRange);
             return smoothPath;
         }
 
@@ -69,21 +68,20 @@ namespace GameArki.PathFinding.AStar {
             openList.Clear();
             Span<AStarNode> recycleNodes = new AStarNode[capacity];
             int recycleNodeCount = 0;
-            // UnityEngine.Debug.Log($"nodePool:{nodePool.Count}");
 
-            // 初始化起点和终点
-            if (!nodePool.TryDequeue(out var startNode)) {
-                startNode = new AStarNode();
-                recycleNodes[recycleNodeCount++] = startNode;
-            }
+            // 初始化起点
+            // - Get From Pool
+            if (!nodePool.TryDequeue(out var startNode)) startNode = new AStarNode();
+            recycleNodes[recycleNodeCount++] = startNode;
             startNode.pos = startPos;
             startNode.g = 0;
             startNode.h = GetManhattanDistance(startPos, endPos);
             startNode.f = 0;
 
-            if (!nodePool.TryDequeue(out var endNode)) {
-                endNode = new AStarNode();
-            }
+            // 初始化终点
+            // - Get From Pool
+            if (!nodePool.TryDequeue(out var endNode)) endNode = new AStarNode();
+            recycleNodes[recycleNodeCount++] = endNode;
             endNode.pos = endPos;
 
             if (!IsInBoundary(startNode.pos)) {
@@ -101,7 +99,7 @@ namespace GameArki.PathFinding.AStar {
                 calculateCount++;
                 // 找到开启列表中F值
                 currentNode = GetLowestFNode(openList, endNode);
-                // UnityEngine.Debug.Log($"openList.Pop {currentNode.pos} F  {currentNode.f}");
+                // Log($"openList.Pop {currentNode.pos} F  {currentNode.f}");
                 var curNodePos = currentNode.pos;
                 var endNodePos = endNode.pos;
 
@@ -132,7 +130,8 @@ namespace GameArki.PathFinding.AStar {
 
             // 如果开启列表为空，则无法找到路径
             RecycleToNodePool(recycleNodes, recycleNodeCount);
-            return null;
+            path.Clear();
+            return path;
 
         }
 
@@ -142,7 +141,6 @@ namespace GameArki.PathFinding.AStar {
                 node.Clear();
                 nodePool.Enqueue(node);
             }
-            // UnityEngine.Debug.Log($"recycleNodeCount:{recycleNodeCount}");
         }
 
         void SearchAndUpdateNeighbourhood(Span<AStarNode> recycleNodes, ref int recycleNodeCount, in Int2 walkableHeightDiffRange, bool allowDiagonalMove, AStarNode endNode, AStarNode currentNode) {
@@ -249,7 +247,7 @@ namespace GameArki.PathFinding.AStar {
                 bool gotFromOpenDic = openDic.TryGetValue(posKey, out var neighbourNode);
                 bool gotFromPool = !gotFromOpenDic ? nodePool.TryDequeue(out neighbourNode) : false;
                 bool needCreate = !gotFromOpenDic && !gotFromPool;
-
+                // if (gotFromPool) Log($"nodePool Dequeue: {neighbourNode.pos}");
                 if (needCreate) neighbourNode = new AStarNode();
                 if (needCreate || gotFromPool) recycleNodes[recycleNodeCount++] = neighbourNode;
                 neighbourNode.pos = pos;
@@ -268,7 +266,7 @@ namespace GameArki.PathFinding.AStar {
 
                 if (!gotFromOpenDic) {
                     openList.Push(neighbourNode);
-                    // UnityEngine.Debug.Log($"openList.Push {neighbourNode.pos} F  {neighbourNode.f} newG:{newG}");
+                    // Log($"openList.Push {neighbourNode.pos} F  {neighbourNode.f} newG:{newG}");
                     openDic.Add(posKey, neighbourNode);
                 }
 

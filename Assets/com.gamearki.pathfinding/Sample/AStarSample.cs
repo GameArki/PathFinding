@@ -24,7 +24,7 @@ namespace GameArki.PathFinding.Sample {
         public bool allowDiagonalMove;
 
         [Header("开启路径平滑处理")]
-        public bool needPathSmooth;
+        public bool findSmoothPath;
 
         [Header("最大寻路次数")]
         public int maxFindTimes = 500;
@@ -85,7 +85,7 @@ namespace GameArki.PathFinding.Sample {
             walkableHeightDiffRange.X = walkableHeightDiffRangeX;
             walkableHeightDiffRange.Y = walkableHeightDiffRangeY;
             for (int i = 0; i < findTimes; i++) {
-                if (needPathSmooth) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
+                if (findSmoothPath) path = astarEntity.FindSmoothPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
                 else path = astarEntity.FindPath(startPos, endPos, walkableHeightDiffRange, allowDiagonalMove, out count);
             }
         }
